@@ -1,0 +1,20 @@
+define endian=little;
+define alignment=1;
+
+define space register     type=register_space  size=1  wordsize=1;
+define space ram          type=ram_space       size=2  wordsize=1;
+define space rom          type=ram_space       size=2  wordsize=1  default;
+
+define register offset=0x00 size=1 [R0 R1 R2 R3 R4 R5 R6 R7];
+define register offset=0x00 size=2 [ER0 ER1 ER2 ER3];
+define register offset=0x08 size=2 [ACC PSW PC LRB SSP X1 X2 DP USP];
+define register offset=0x20 size=1 [CSR TSR DSR ROMWIN];
+define register offset=0x0a size=4 [contextreg];
+
+# contextreg is a hack to copy the DD flag out of PSW (which is located in RAM 0x04)
+define context contextreg
+  dd=(12,12);
+
+define token instr(8) op0 = (0, 7);
+
+:RT is op0 = 0x01 { tmp:2 = *:2 SSP; SSP = SSP+2; return [tmp]; }

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<processor_spec>
+    <default_memory_blocks>
+        <memory_block name="rom" start_address="rom:0x0000" length="0x10000" mode="r" initialized="true"/>
+        <memory_block name="ram" start_address="ram:0x0000" length="0x1a00" mode="rw"/>
+    </default_memory_blocks>
+    
+    <default_symbols>
+        <symbol name="reset_vector" address="rom:0x0000" type="code_ptr" entry="true"/>
+        <symbol name="brk_vector" address="rom:0x0002" type="code_ptr" entry="true"/>
+        <symbol name="wdt_vector" address="rom:0x0004" type="code_ptr" entry="true"/>
+        <!-- TODO: all the other vectors! -->
+    </default_symbols>
+</processor_spec>

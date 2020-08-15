@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<language_definitions>
+    <language processor="66Q59x"
+              endian="little"
+              size="16"
+              variant="default"
+              version="1.0"
+              slafile="66q59x.sla"
+              processorspec="66q59x.pspec"
+              id="66q59x:2:default">
+        <description>OKI MSM66Q59x</description>
+        <compiler name="default" spec="66q59x.cspec" id="default"/>
+    </language>
+</language_definitions>
