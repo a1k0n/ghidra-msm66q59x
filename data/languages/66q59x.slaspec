@@ -1,20 +1,104 @@
 define endian=little;
 define alignment=1;
 
-define space register     type=register_space  size=1  wordsize=1;
-define space ram          type=ram_space       size=2  wordsize=1;
 define space rom          type=ram_space       size=2  wordsize=1  default;
+define space ram          type=ram_space       size=2  wordsize=1;
+define space register     type=register_space  size=2  wordsize=1;
 
 define register offset=0x00 size=1 [R0 R1 R2 R3 R4 R5 R6 R7];
 define register offset=0x00 size=2 [ER0 ER1 ER2 ER3];
-define register offset=0x08 size=2 [ACC PSW PC LRB SSP X1 X2 DP USP];
+define register offset=0x08 size=1 [SSPL SSPH LRBL LRBH PSWL PSWH ACCL ACCH];
+define register offset=0x08 size=2 [SSP LRB PSW ACC PC X1 X2 DP USP];
 define register offset=0x20 size=1 [CSR TSR DSR ROMWIN];
-define register offset=0x0a size=4 [contextreg];
+define register offset=0x30 size=4 [contextreg];
+
+@define C   "PSW[15,1]"
+@define Z   "PSW[14,1]"
 
 # contextreg is a hack to copy the DD flag out of PSW (which is located in RAM 0x04)
 define context contextreg
-  dd=(12,12);
+  dd=(0,0);
 
-define token instr(8) op0 = (0, 7);
+define token instr(8)
+	op0 = (0, 7)
+	bitop0 = (3, 7)
+	bit0 = (0, 2)
+	regop0 = (3, 7)
+	reg0 = (0, 2)
+    n8 = (0, 7)
+    rdiff8 = (0, 7) signed
+;
 
-:RT is op0 = 0x01 { tmp:2 = *:2 SSP; SSP = SSP+2; return [tmp]; }
+attach variables [ reg0 ] [ R0 R1 R2 R3 R4 R5 R6 R7 ];
+ 
+define token imm16token(16) n16 = (0, 15);
+
+rel8: relAddr is rdiff8 [ relAddr = inst_next+rdiff8; ] { export *[rom]:1 relAddr; }
+
+fix8: "fix" n8 is n8 { tmp:2 = 0x200 + n8; export *[ram]:1 tmp; }
+off8: "off" n8 is n8 { tmp:2 = (LRB & 0xff00) + n8; export *[ram]:1 tmp; }
+sfr8: SSPL is n8 = 0x00 & SSPL { export SSPL; }
+sfr8: SSPH is n8 = 0x01 & SSPH { export SSPH; }
+sfr8: LRBL is n8 = 0x02 & LRBL { export LRBL; }
+sfr8: LRBH is n8 = 0x03 & LRBH { export LRBH; }
+sfr8: PSWL is n8 = 0x04 & PSWL { export PSWL; }
+sfr8: PSWH is n8 = 0x05 & PSWH { export PSWH; }
+sfr8: ACCL is n8 = 0x06 & ACCL { export ACCL; }
+sfr8: ACCH is n8 = 0x07 & ACCH { export ACCH; }
+sfr8: n8   is n8               { export *[ram]:1 n8; }
+
+byte0pf: PSWL is op0 = 0x8A & PSWL { export PSWL; }
+byte0pf: PSWH is op0 = 0x9A & PSWH { export PSWH; }
+byte1pf: fix8 is op0 = 0xB4; fix8  { export fix8; }
+byte1pf: off8 is op0 = 0xB5; off8  { export off8; }
+byte1pf: sfr8 is op0 = 0xB6; sfr8  { export sfr8; }
+byte2pf: n16  is op0 = 0xB7; n16   { export *[ram]:1 n16; }
+
+sfr16: SSP is n8 = 0x00 & SSP { export SSP; }
+sfr16: LRB is n8 = 0x02 & LRB { export LRB; }
+sfr16: PSW is n8 = 0x04 & PSW { export PSW; }
+sfr16: ACC is n8 = 0x06 & ACC { export ACC; }
+sfr16: n8  is n8              { export *[ram]:2 n8; }
+
+
+:NOP is op0 = 0x00 {}
+
+:RT is op0 = 0x01 { PC = *:2 SSP; SSP = SSP+2; return [PC]; }
+
+# FIXME: I am sure this indirect reference is wrong
+:BRK is op0 = 0xff { brk_vec:2 = 0x02; return [brk_vec]; }
+
+:MOVB byte0pf, "#"n8 is byte0pf; op0 = 0xAB; n8  { byte0pf = n8; }
+:MOVB byte1pf, "#"n8 is byte1pf; op0 = 0xAB; n8  { byte1pf = n8; }
+:MOVB byte2pf, "#"n8 is byte2pf; op0 = 0xAB; n8  { byte2pf = n8; }
+
+:MOVB sfr8, #n8 is op0 = 0xD6; sfr8; n8 { sfr8 = n8; }
+
+:MOV sfr16, #n16 is op0 = 0xC6; sfr16; n16 { sfr16 = n16; }
+
+:RB byte0pf^"."^bit0 is byte0pf; bitop0 = 0 & bit0 { byte0pf = byte0pf & ~(1 << bit0); }
+:RB byte1pf^"."^bit0 is byte1pf; bitop0 = 0 & bit0 { byte1pf = byte1pf & ~(1 << bit0); }
+:RB byte2pf^"."^bit0 is byte2pf; bitop0 = 0 & bit0 { byte2pf = byte2pf & ~(1 << bit0); }
+
+:SB byte0pf^"."^bit0 is byte0pf; bitop0 = 0x01 & bit0 { byte0pf = byte0pf | (1 << bit0); }
+:SB byte1pf^"."^bit0 is byte1pf; bitop0 = 0x01 & bit0 { byte1pf = byte1pf | (1 << bit0); }
+:SB byte2pf^"."^bit0 is byte2pf; bitop0 = 0x01 & bit0 { byte2pf = byte2pf | (1 << bit0); }
+
+macro lb(op) {
+  ACCL = op;
+  $(Z) = ACCL == 0;
+}
+
+:LB ACCL, "#"n8 is op0 = 0xF9; n8 & ACCL      [ dd=0; globalset(inst_next, dd); ] { lb(n8); }
+:LB ACCL, reg0 is regop0 = 0x0F & ACCL & reg0 [ dd=0; globalset(inst_next, dd); ] { lb(reg0); }
+:LB ACCL, fix8 is op0 = 0x94; fix8 & ACCL     [ dd=0; globalset(inst_next, dd); ] { lb(fix8); }
+:LB ACCL, off8 is op0 = 0x95; off8 & ACCL     [ dd=0; globalset(inst_next, dd); ] { lb(off8); }
+:LB ACCL, sfr8 is op0 = 0x96; sfr8 & ACCL     [ dd=0; globalset(inst_next, dd); ] { lb(sfr8); }
+
+:STB ACCL, reg0 is dd = 0 & regop0 = 0x06 & ACCL & reg0 { reg0 = ACCL; }
+:STB ACCL, fix8 is dd = 0 & op0 = 0x34; fix8 & ACCL     { fix8 = ACCL; }
+:STB ACCL, off8 is dd = 0 & op0 = 0x35; off8 & ACCL     { off8 = ACCL; }
+:STB ACCL, sfr8 is dd = 0 & op0 = 0x36; sfr8 & ACCL     { sfr8 = ACCL; }
+
+:JNE rel8 is op0 = 0xF6; rel8 { if ($(Z) == 0) goto rel8; }
+
