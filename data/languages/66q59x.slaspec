@@ -185,6 +185,32 @@ macro cmp(op1, op2) {
   $(OV) = sborrow(op1, op2);
 }
 
+:CMP ACC, reg16 is dd = 1 & regop0 = (0x18>>3) & ACC & reg16 { cmp(ACC, reg16); }
+:CMP ACC, fix16 is dd = 1 & op0 = 0x9c; fix16 & ACC          { cmp(ACC, fix16); }
+:CMP ACC, off16 is dd = 1 & op0 = 0x9d; off16 & ACC          { cmp(ACC, off16); }
+:CMP ACC, #n16  is dd = 1 & op0 = 0x9e; n16 & ACC            { cmp(ACC, n16); }
+:CMP ACC, word0pf is dd = 1 & word0pf ; op0 = 0x95 & ACC     { cmp(ACC, word0pf); } 
+:CMP ACC, word1pf is dd = 1 & word1pf ; op0 = 0x95 & ACC     { cmp(ACC, word1pf); } 
+:CMP ACC, word2pf is dd = 1 & word2pf ; op0 = 0x95 & ACC     { cmp(ACC, word2pf); } 
+
+:CMP fix16, #n16 is op0 = 0xC4; fix16; n16 { cmp(fix16, n16); }
+:CMP off16, #n16 is op0 = 0xC5; off16; n16 { cmp(off16, n16); }
+:CMP word0pf, fix16 is word0pf; op0 = 0x90; fix16 { cmp(word0pf, fix16); }
+:CMP word1pf, fix16 is word1pf; op0 = 0x90; fix16 { cmp(word1pf, fix16); }
+:CMP word2pf, fix16 is word2pf; op0 = 0x90; fix16 { cmp(word2pf, fix16); }
+:CMP word0pf, off16 is word0pf; op0 = 0x91; off16 { cmp(word0pf, off16); }
+:CMP word1pf, off16 is word1pf; op0 = 0x91; off16 { cmp(word1pf, off16); }
+:CMP word2pf, off16 is word2pf; op0 = 0x91; off16 { cmp(word2pf, off16); }
+:CMP word0pf, sfr16 is word0pf; op0 = 0x92; sfr16 { cmp(word0pf, sfr16); }
+:CMP word1pf, sfr16 is word1pf; op0 = 0x92; sfr16 { cmp(word1pf, sfr16); }
+:CMP word2pf, sfr16 is word2pf; op0 = 0x92; sfr16 { cmp(word2pf, sfr16); }
+:CMP word0pf, #n16 is word0pf; op0 = 0x93; n16 { cmp(word0pf, n16); }
+:CMP word1pf, #n16 is word1pf; op0 = 0x93; n16 { cmp(word1pf, n16); }
+:CMP word2pf, #n16 is word2pf; op0 = 0x93; n16 { cmp(word2pf, n16); }
+:CMP word0pf, ACC is word0pf; op0 = 0x94 & ACC { cmp(word0pf, ACC); }
+:CMP word1pf, ACC is word1pf; op0 = 0x94 & ACC { cmp(word1pf, ACC); }
+:CMP word2pf, ACC is word2pf; op0 = 0x94 & ACC { cmp(word2pf, ACC); }
+
 :CMPB ACCL, reg8 is dd = 0 & regop0 = (0x18>>3) & ACCL & reg8 { cmp(ACCL, reg8); }
 :CMPB ACCL, fix8 is dd = 0 & op0 = 0x9c; fix8 & ACCL          { cmp(ACCL, fix8); }
 :CMPB ACCL, off8 is dd = 0 & op0 = 0x9d; off8 & ACCL          { cmp(ACCL, off8); }
@@ -192,6 +218,43 @@ macro cmp(op1, op2) {
 :CMPB ACCL, byte0pf is dd = 0 & byte0pf ; op0 = 0x95 & ACCL   { cmp(ACCL, byte0pf); } 
 :CMPB ACCL, byte1pf is dd = 0 & byte1pf ; op0 = 0x95 & ACCL   { cmp(ACCL, byte1pf); } 
 :CMPB ACCL, byte2pf is dd = 0 & byte2pf ; op0 = 0x95 & ACCL   { cmp(ACCL, byte2pf); } 
+
+:CMPB fix8, #n8 is op0 = 0xD4; fix8; n8 { cmp(fix8, n8); }
+:CMPB off8, #n8 is op0 = 0xD5; off8; n8 { cmp(off8, n8); }
+:CMPB byte0pf, fix8 is byte0pf; op0 = 0x90; fix8 { cmp(byte0pf, fix8); }
+:CMPB byte1pf, fix8 is byte1pf; op0 = 0x90; fix8 { cmp(byte1pf, fix8); }
+:CMPB byte2pf, fix8 is byte2pf; op0 = 0x90; fix8 { cmp(byte2pf, fix8); }
+:CMPB byte0pf, off8 is byte0pf; op0 = 0x91; off8 { cmp(byte0pf, off8); }
+:CMPB byte1pf, off8 is byte1pf; op0 = 0x91; off8 { cmp(byte1pf, off8); }
+:CMPB byte2pf, off8 is byte2pf; op0 = 0x91; off8 { cmp(byte2pf, off8); }
+:CMPB byte0pf, sfr8 is byte0pf; op0 = 0x92; sfr8 { cmp(byte0pf, sfr8); }
+:CMPB byte1pf, sfr8 is byte1pf; op0 = 0x92; sfr8 { cmp(byte1pf, sfr8); }
+:CMPB byte2pf, sfr8 is byte2pf; op0 = 0x92; sfr8 { cmp(byte2pf, sfr8); }
+:CMPB byte0pf, #n8 is byte0pf; op0 = 0x93; n8 { cmp(byte0pf, n8); }
+:CMPB byte1pf, #n8 is byte1pf; op0 = 0x93; n8 { cmp(byte1pf, n8); }
+:CMPB byte2pf, #n8 is byte2pf; op0 = 0x93; n8 { cmp(byte2pf, n8); }
+:CMPB byte0pf, ACCL is byte0pf; op0 = 0x94 & ACCL { cmp(byte0pf, ACCL); }
+:CMPB byte1pf, ACCL is byte1pf; op0 = 0x94 & ACCL { cmp(byte1pf, ACCL); }
+:CMPB byte2pf, ACCL is byte2pf; op0 = 0x94 & ACCL { cmp(byte2pf, ACCL); }
+
+macro dec(op) {
+  $(OV) = sborrow(op, 1);
+  $(Z) = (op == 1);
+  $(S) = (op - 1) s< 0; 
+  op = op - 1;
+}
+
+:DEC ACC is dd = 1 & op0 = 0xDC & ACC  { dec(ACC); }
+:DEC reg16 is regop0 = (0x50>>3) & (bit0 < 4) & reg16 { dec(reg16); }
+:DEC word0pf is word0pf; op0 = 0xD6 { dec(word0pf); }
+:DEC word1pf is word1pf; op0 = 0xD6 { dec(word1pf); }
+:DEC word2pf is word2pf; op0 = 0xD6 { dec(word2pf); }
+
+:DECB ACCL is dd = 0 & op0 = 0xDC & ACCL { dec(ACCL); }
+:DECB reg8 is regop0 = (0xD0>>3) & (bit0 < 4) & reg8 { dec(reg8); }
+:DECB byte0pf is byte0pf; op0 = 0xD6 { dec(byte0pf); }
+:DECB byte1pf is byte1pf; op0 = 0xD6 { dec(byte1pf); }
+:DECB byte2pf is byte2pf; op0 = 0xD6 { dec(byte2pf); }
 
 :JGT rel8 is op0 = 0xF0; rel8 { if ($(C) == 0 && $(Z) == 0) goto rel8; }
 :JEQ rel8 is op0 = 0xF1; rel8 { if ($(Z) == 1) goto rel8; }
@@ -201,6 +264,26 @@ macro cmp(op1, op2) {
 :JGE rel8 is op0 = 0xF5; rel8 { if ($(C) == 0) goto rel8; }
 :JNE rel8 is op0 = 0xF6; rel8 { if ($(Z) == 0) goto rel8; }
 :JLE rel8 is op0 = 0xF7; rel8 { if ($(Z) == 1 || $(C) == 1) goto rel8; }
+
+macro jbr(op, bit, rel8) {
+  if ((op & (1<<bit)) == 0) goto rel8;
+}
+
+macro jbs(op, bit, rel8) {
+  if (op & (1<<bit)) goto rel8;
+}
+
+macro jbrs(op, bit, rel8) {
+  # jumps if bit was 0, but unconditionally set bit to 1 so we can assume it afterward
+  r = (op & (1<<bit)) == 0;
+  op = op|(1<<bit);
+  if (r) goto rel8;
+}
+
+:JBR ACCL^"."^bit0, rel8 is op0 = 0xBC; bitop0 = (0x20>>3) & bit0; rel8 & ACCL { jbr(ACCL, bit0, rel8); }
+:JBR byte0pf^"."^bit0, rel8 is byte0pf; bitop0 = (0x20>>3) & bit0; rel8 { jbr(byte0pf, bit0, rel8); }
+:JBR byte1pf^"."^bit0, rel8 is byte1pf; bitop0 = (0x20>>3) & bit0; rel8 { jbr(byte1pf, bit0, rel8); }
+:JBR byte2pf^"."^bit0, rel8 is byte2pf; bitop0 = (0x20>>3) & bit0; rel8 { jbr(byte2pf, bit0, rel8); }
 
 :DJNZ ACCL, rel8 is op0 = 0xBC; op0 = 0xEA; rel8 & ACCL { lb(ACCL-1); if ($(Z) == 0) goto rel8; }
 
