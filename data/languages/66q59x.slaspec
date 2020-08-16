@@ -57,6 +57,11 @@ sfr8: ACCL is n8 = 0x06 & ACCL { export ACCL; }
 sfr8: ACCH is n8 = 0x07 & ACCH { export ACCH; }
 sfr8: n8   is n8               { export *[ram]:1 n8; }
 
+# byte-mode addressing prefixes with suffix length 0, 1, 2
+# trying to combine these into one table leads to "ellipsis in middle of pattern"
+# which is a no-no in SLEIGH, so we have to make three cases for every byte-
+# or word-prefixed instruction.
+byte0pf: reg8 is regop0 = (0x68 >> 3) & reg8 { export reg8; }
 byte0pf: PSWL is op0 = 0x8A & PSWL { export PSWL; }
 byte0pf: PSWH is op0 = 0x9A & PSWH { export PSWH; }
 byte1pf: fix8 is op0 = 0xB4; fix8  { export fix8; }
@@ -72,7 +77,14 @@ sfr16: PSW is n8 = 0x04 & PSW { export PSW; }
 sfr16: ACC is n8 = 0x06 & ACC { export ACC; }
 sfr16: n8  is n8              { export *[ram]:2 n8; }
 
-
+word0pf: reg16 is regop0 = (0x60>>3) & reg16 { export reg16; }
+word1pf: fix16 is op0 = 0xA4; fix16 { export fix16; }
+word1pf: off16 is op0 = 0xA5; off16 { export off16; }
+word1pf: sfr16 is op0 = 0xA6; sfr16 { export sfr16; }
+word2pf: n16   is op0 = 0xA7; n16   { export *[ram]:2 n16; }
+word2pf: n16[X1] is op0 = 0xA8; n16 & X1 { tmp:2 = n16+X1; export *[ram]:2 tmp; }
+word2pf: n16[X2] is op0 = 0xA9; n16 & X2 { tmp:2 = n16+X2; export *[ram]:2 tmp; }
+ 
 :NOP is op0 = 0x00 { goto inst_next; }
 
 :RT is op0 = 0x01 { PC = *:2 SSP; SSP = SSP+2; return [PC]; }
@@ -80,11 +92,52 @@ sfr16: n8  is n8              { export *[ram]:2 n8; }
 # FIXME: I am sure this indirect reference is wrong
 :BRK is op0 = 0xff { brk_vec:2 = 0x02; return [brk_vec]; }
 
-:MOVB byte0pf, #n8 is byte0pf; op0 = 0xAB; n8  { byte0pf = n8; }
-:MOVB byte1pf, #n8 is byte1pf; op0 = 0xAB; n8  { byte1pf = n8; }
-:MOVB byte2pf, #n8 is byte2pf; op0 = 0xAB; n8  { byte2pf = n8; }
-
+:MOVB reg8, #n8 is regop0 = (0x10>>3) & reg8; n8 { reg8 = n8; }
 :MOVB sfr8, #n8 is op0 = 0xD6; sfr8; n8 { sfr8 = n8; }
+:MOVB off8, #n8 is op0 = 0xD7; off8; n8 { off8 = n8; }
+:MOVB ACCL, byte0pf is byte0pf; op0 = 0x97 & ACCL { ACCL = byte0pf; }
+:MOVB ACCL, byte1pf is byte1pf; op0 = 0x97 & ACCL { ACCL = byte1pf; }
+:MOVB ACCL, byte2pf is byte2pf; op0 = 0x97 & ACCL { ACCL = byte2pf; }
+:MOVB reg8, byte0pf is byte0pf; regop0 = (0x70>>3) & reg8 { reg8 = byte0pf; }
+:MOVB reg8, byte1pf is byte1pf; regop0 = (0x70>>3) & reg8 { reg8 = byte1pf; }
+:MOVB reg8, byte2pf is byte2pf; regop0 = (0x70>>3) & reg8 { reg8 = byte2pf; }
+:MOVB fix8, byte0pf is byte0pf; op0 = 0x86; fix8 { fix8 = byte0pf; }
+:MOVB fix8, byte1pf is byte1pf; op0 = 0x86; fix8 { fix8 = byte1pf; }
+:MOVB fix8, byte2pf is byte2pf; op0 = 0x86; fix8 { fix8 = byte2pf; }
+:MOVB off8, byte0pf is byte0pf; op0 = 0x87; off8 { off8 = byte0pf; }
+:MOVB off8, byte1pf is byte1pf; op0 = 0x87; off8 { off8 = byte1pf; }
+:MOVB off8, byte2pf is byte2pf; op0 = 0x87; off8 { off8 = byte2pf; }
+:MOVB sfr8, byte0pf is byte0pf; op0 = 0x96; sfr8 { sfr8 = byte0pf; }
+:MOVB sfr8, byte1pf is byte1pf; op0 = 0x96; sfr8 { sfr8 = byte1pf; }
+:MOVB sfr8, byte2pf is byte2pf; op0 = 0x96; sfr8 { sfr8 = byte2pf; }
+:MOVB byte0pf, ACCL is byte0pf; op0 = 0xAA & ACCL { byte0pf = ACCL; }
+:MOVB byte1pf, ACCL is byte1pf; op0 = 0xAA & ACCL { byte1pf = ACCL; }
+:MOVB byte2pf, ACCL is byte2pf; op0 = 0xAA & ACCL { byte2pf = ACCL; }
+:MOVB byte0pf, #n8 is byte0pf; op0 = 0xAB; n8 { byte0pf = n8; }
+:MOVB byte1pf, #n8 is byte1pf; op0 = 0xAB; n8 { byte1pf = n8; }
+:MOVB byte2pf, #n8 is byte2pf; op0 = 0xAB; n8 { byte2pf = n8; }
+
+:MOV reg16, word0pf is word0pf; regop0 = (0x70>>3) & reg16 { reg16 = word0pf; }
+:MOV reg16, word1pf is word1pf; regop0 = (0x70>>3) & reg16 { reg16 = word1pf; }
+:MOV reg16, word2pf is word2pf; regop0 = (0x70>>3) & reg16 { reg16 = word2pf; }
+:MOV fix16, word0pf is word0pf; op0 = 0x86; fix16 { fix16 = word0pf; }
+:MOV fix16, word1pf is word1pf; op0 = 0x86; fix16 { fix16 = word1pf; }
+:MOV fix16, word2pf is word2pf; op0 = 0x86; fix16 { fix16 = word2pf; }
+:MOV off16, word0pf is word0pf; op0 = 0x87; off16 { off16 = word0pf; }
+:MOV off16, word1pf is word1pf; op0 = 0x87; off16 { off16 = word1pf; }
+:MOV off16, word2pf is word2pf; op0 = 0x87; off16 { off16 = word2pf; }
+:MOV sfr16, word0pf is word0pf; op0 = 0x96; sfr16 { sfr16 = word0pf; }
+:MOV sfr16, word1pf is word1pf; op0 = 0x96; sfr16 { sfr16 = word1pf; }
+:MOV sfr16, word2pf is word2pf; op0 = 0x96; sfr16 { sfr16 = word2pf; }
+:MOV ACC, word0pf is word0pf; op0 = 0x97 & ACC { ACC = word0pf; }
+:MOV ACC, word1pf is word1pf; op0 = 0x97 & ACC { ACC = word1pf; }
+:MOV ACC, word2pf is word2pf; op0 = 0x97 & ACC { ACC = word2pf; }
+:MOV word0pf, ACC is word0pf; op0 = 0xAA & ACC { word0pf = ACC; }
+:MOV word1pf, ACC is word1pf; op0 = 0xAA & ACC { word1pf = ACC; }
+:MOV word2pf, ACC is word2pf; op0 = 0xAA & ACC { word2pf = ACC; }
+:MOV word0pf, #n16 is word0pf; op0 = 0xAB; n16 { word0pf = n16; }
+:MOV word1pf, #n16 is word1pf; op0 = 0xAB; n16 { word1pf = n16; }
+:MOV word2pf, #n16 is word2pf; op0 = 0xAB; n16 { word2pf = n16; }
 
 :MOV reg16, #n16 is regop0 = 0x04 & reg16; n16 { reg16 = n16; }
 :MOV sfr16, #n16 is op0 = 0xC6; sfr16; n16     { sfr16 = n16; }
@@ -108,13 +161,13 @@ macro lb(op8) {
   $(Z) = ACCL == 0;
 }
 
-:L ACC, "#"n16 is op0 = 0xF8; n16 & ACC       [ dd=1; globalset(inst_next, dd); ] { l(n16); }
+:L ACC, #n16 is op0 = 0xF8; n16 & ACC       [ dd=1; globalset(inst_next, dd); ] { l(n16); }
 :L ACC, reg16  is regop0 = 0x0e & reg16 & ACC  [ dd=1; globalset(inst_next, dd); ] { l(reg16); }
 :L ACC, fix16  is op0 = 0x84; fix16 & ACC     [ dd=1; globalset(inst_next, dd); ] { l(fix16); }
 :L ACC, off16  is op0 = 0x85; off16 & ACC     [ dd=1; globalset(inst_next, dd); ] { l(off16); }
 :L ACC, sfr16  is op0 = 0x86; sfr16 & ACC     [ dd=1; globalset(inst_next, dd); ] { l(sfr16); }
 
-:LB ACCL, "#"n8 is op0 = 0xF9; n8 & ACCL      [ dd=0; globalset(inst_next, dd); ] { lb(n8); }
+:LB ACCL, #n8 is op0 = 0xF9; n8 & ACCL      [ dd=0; globalset(inst_next, dd); ] { lb(n8); }
 :LB ACCL, reg8 is regop0 = 0x0F & ACCL & reg8 [ dd=0; globalset(inst_next, dd); ] { lb(reg8); }
 :LB ACCL, fix8 is op0 = 0x94; fix8 & ACCL     [ dd=0; globalset(inst_next, dd); ] { lb(fix8); }
 :LB ACCL, off8 is op0 = 0x95; off8 & ACCL     [ dd=0; globalset(inst_next, dd); ] { lb(off8); }
