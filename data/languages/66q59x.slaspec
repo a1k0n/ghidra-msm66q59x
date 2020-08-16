@@ -11,15 +11,25 @@ define register offset=0x08 size=1 [SSPL SSPH LRBL LRBH PSWL PSWH ACCL ACCH];
 define register offset=0x08 size=2 [SSP LRB PSW ACC PC X1 X2 DP USP];
 define register offset=0x20 size=1 [CSR TSR DSR ROMWIN];
 define register offset=0x30 size=4 [contextreg];
+# taking a cue from x86, define pseudo-registers for each flag separately,
+# otherwise decompilation is a mess
+define register offset=0x40 size=1 [CF ZF SF OVF];
 
-@define C   "PSW[15,1]"
-@define Z   "PSW[14,1]"
+# @define C   "PSW[15,1]"
+# @define Z   "PSW[14,1]"
 # @define HC  "PSW[13,1]"
 # @define DD  "PSW[12,1]"
-@define S   "PSW[11,1]"
+# @define S   "PSW[11,1]"
 # @define MIP "PSW[10,1]"
-@define OV  "PSW[9,1]"
+# @define OV  "PSW[9,1]"
 
+macro packflags(psw) {
+  psw = (0x8000 * zext(CF&1))
+      | (0x4000 * zext(ZF&1))
+      | (0x0800 * zext(SF&1))
+      | (0x0200 * zext(OVF&1))
+      | (0x35ff & psw);
+}
 
 # contextreg is a hack to copy the DD flag out of PSW (which is located in RAM 0x04)
 define context contextreg
@@ -28,7 +38,7 @@ define context contextreg
 define token instr(8)
 	op0 = (0, 7)
 	bitop0 = (3, 7)
-	bit0 = (0, 2)
+	bit0 = (0, 2) dec
 	regop0 = (3, 7)
 	reg8 = (0, 2)
 	reg16 = (0, 2)
@@ -51,8 +61,8 @@ sfr8: SSPL is n8 = 0x00 & SSPL { export SSPL; }
 sfr8: SSPH is n8 = 0x01 & SSPH { export SSPH; }
 sfr8: LRBL is n8 = 0x02 & LRBL { export LRBL; }
 sfr8: LRBH is n8 = 0x03 & LRBH { export LRBH; }
-sfr8: PSWL is n8 = 0x04 & PSWL { export PSWL; }
-sfr8: PSWH is n8 = 0x05 & PSWH { export PSWH; }
+sfr8: PSWL is n8 = 0x04 & PSWL { packflags(PSW); export PSWL; }
+sfr8: PSWH is n8 = 0x05 & PSWH { packflags(PSW); export PSWH; }
 sfr8: ACCL is n8 = 0x06 & ACCL { export ACCL; }
 sfr8: ACCH is n8 = 0x07 & ACCH { export ACCH; }
 sfr8: n8   is n8               { export *[ram]:1 n8; }
@@ -62,8 +72,8 @@ sfr8: n8   is n8               { export *[ram]:1 n8; }
 # which is a no-no in SLEIGH, so we have to make three cases for every byte-
 # or word-prefixed instruction.
 byte0pf: reg8 is regop0 = (0x68 >> 3) & reg8 { export reg8; }
-byte0pf: PSWL is op0 = 0x8A & PSWL { export PSWL; }
-byte0pf: PSWH is op0 = 0x9A & PSWH { export PSWH; }
+byte0pf: PSWL is op0 = 0x8A & PSWL { packflags(PSW); export PSWL; }
+byte0pf: PSWH is op0 = 0x9A & PSWH { packflags(PSW); export PSWH; }
 byte1pf: fix8 is op0 = 0xB4; fix8  { export fix8; }
 byte1pf: off8 is op0 = 0xB5; off8  { export off8; }
 byte1pf: sfr8 is op0 = 0xB6; sfr8  { export sfr8; }
@@ -73,7 +83,7 @@ fix16: "fix" n8 is n8 { tmp:2 = 0x200 + n8; export *[ram]:2 tmp; }
 off16: "off" n8 is n8 { tmp:2 = (LRB & 0xff00) + n8; export *[ram]:2 tmp; }
 sfr16: SSP is n8 = 0x00 & SSP { export SSP; }
 sfr16: LRB is n8 = 0x02 & LRB { export LRB; }
-sfr16: PSW is n8 = 0x04 & PSW { export PSW; }
+sfr16: PSW is n8 = 0x04 & PSW { packflags(PSW); export PSW; }
 sfr16: ACC is n8 = 0x06 & ACC { export ACC; }
 sfr16: n8  is n8              { export *[ram]:2 n8; }
 
@@ -153,12 +163,12 @@ word2pf: n16[X2] is op0 = 0xA9; n16 & X2 { tmp:2 = n16+X2; export *[ram]:2 tmp; 
 
 macro l(op16) {
   ACC = op16;
-  $(Z) = ACC == 0;
+  ZF = ACC == 0;
 }
 
 macro lb(op8) {
   ACCL = op8;
-  $(Z) = ACCL == 0;
+  ZF = ACCL == 0;
 }
 
 :L ACC, #n16 is op0 = 0xF8; n16 & ACC       [ dd=1; globalset(inst_next, dd); ] { l(n16); }
@@ -179,10 +189,10 @@ macro lb(op8) {
 :STB ACCL, sfr8 is dd = 0 & op0 = 0x36; sfr8 & ACCL     { sfr8 = ACCL; }
 
 macro cmp(op1, op2) {
-  $(C) = (op1 < op2);
-  $(Z) = (op1 == op2);
-  $(S) = (op1 - op2) s< 0;
-  $(OV) = sborrow(op1, op2);
+  CF = (op1 < op2);
+  ZF = (op1 == op2);
+  SF = (op1 - op2) s< 0;
+  OVF = sborrow(op1, op2);
 }
 
 :CMP ACC, reg16 is dd = 1 & regop0 = (0x18>>3) & ACC & reg16 { cmp(ACC, reg16); }
@@ -238,9 +248,9 @@ macro cmp(op1, op2) {
 :CMPB byte2pf, ACCL is byte2pf; op0 = 0x94 & ACCL { cmp(byte2pf, ACCL); }
 
 macro dec(op) {
-  $(OV) = sborrow(op, 1);
-  $(Z) = (op == 1);
-  $(S) = (op - 1) s< 0; 
+  OVF = sborrow(op, 1);
+  ZF = (op == 1);
+  SF = (op - 1) s< 0; 
   op = op - 1;
 }
 
@@ -256,22 +266,23 @@ macro dec(op) {
 :DECB byte1pf is byte1pf; op0 = 0xD6 { dec(byte1pf); }
 :DECB byte2pf is byte2pf; op0 = 0xD6 { dec(byte2pf); }
 
-:JGT rel8 is op0 = 0xF0; rel8 { if ($(C) == 0 && $(Z) == 0) goto rel8; }
-:JEQ rel8 is op0 = 0xF1; rel8 { if ($(Z) == 1) goto rel8; }
-:JLT rel8 is op0 = 0xF2; rel8 { if ($(C) == 1) goto rel8; }
-:JNS rel8 is op0 = 0xF3; rel8 { if ($(S) == 1) goto rel8; }
-:JPS rel8 is op0 = 0xF4; rel8 { if ($(S) == 0) goto rel8; }
-:JGE rel8 is op0 = 0xF5; rel8 { if ($(C) == 0) goto rel8; }
-:JNE rel8 is op0 = 0xF6; rel8 { if ($(Z) == 0) goto rel8; }
-:JLE rel8 is op0 = 0xF7; rel8 { if ($(Z) == 1 || $(C) == 1) goto rel8; }
+:JGT rel8 is op0 = 0xF0; rel8 { if (CF == 0 && ZF == 0) goto rel8; }
+:JEQ rel8 is op0 = 0xF1; rel8 { if (ZF == 1) goto rel8; }
+:JLT rel8 is op0 = 0xF2; rel8 { if (CF == 1) goto rel8; }
+:JNS rel8 is op0 = 0xF3; rel8 { if (SF == 1) goto rel8; }
+:JPS rel8 is op0 = 0xF4; rel8 { if (SF == 0) goto rel8; }
+:JGE rel8 is op0 = 0xF5; rel8 { if (CF == 0) goto rel8; }
+:JNE rel8 is op0 = 0xF6; rel8 { if (ZF == 0) goto rel8; }
+:JLE rel8 is op0 = 0xF7; rel8 { if (ZF == 1 || CF == 1) goto rel8; }
 
 macro jbr(op, bit, rel8) {
   if ((op & (1<<bit)) == 0) goto rel8;
 }
 
-macro jbs(op, bit, rel8) {
-  if (op & (1<<bit)) goto rel8;
-}
+:JBR ACCL^"."^bit0, rel8 is op0 = 0xBC; bitop0 = (0x20>>3) & bit0; rel8 & ACCL { jbr(ACCL, bit0, rel8); }
+:JBR byte0pf^"."^bit0, rel8 is byte0pf; bitop0 = (0x20>>3) & bit0; rel8 { jbr(byte0pf, bit0, rel8); }
+:JBR byte1pf^"."^bit0, rel8 is byte1pf; bitop0 = (0x20>>3) & bit0; rel8 { jbr(byte1pf, bit0, rel8); }
+:JBR byte2pf^"."^bit0, rel8 is byte2pf; bitop0 = (0x20>>3) & bit0; rel8 { jbr(byte2pf, bit0, rel8); }
 
 macro jbrs(op, bit, rel8) {
   # jumps if bit was 0, but unconditionally set bit to 1 so we can assume it afterward
@@ -280,10 +291,49 @@ macro jbrs(op, bit, rel8) {
   if (r) goto rel8;
 }
 
-:JBR ACCL^"."^bit0, rel8 is op0 = 0xBC; bitop0 = (0x20>>3) & bit0; rel8 & ACCL { jbr(ACCL, bit0, rel8); }
-:JBR byte0pf^"."^bit0, rel8 is byte0pf; bitop0 = (0x20>>3) & bit0; rel8 { jbr(byte0pf, bit0, rel8); }
-:JBR byte1pf^"."^bit0, rel8 is byte1pf; bitop0 = (0x20>>3) & bit0; rel8 { jbr(byte1pf, bit0, rel8); }
-:JBR byte2pf^"."^bit0, rel8 is byte2pf; bitop0 = (0x20>>3) & bit0; rel8 { jbr(byte2pf, bit0, rel8); }
+:JBRS ACCL^"."^bit0, rel8 is op0 = 0xBC; bitop0 = (0x30>>3) & bit0; rel8 & ACCL { jbrs(ACCL, bit0, rel8); }
+:JBRS byte0pf^"."^bit0, rel8 is byte0pf; bitop0 = (0x30>>3) & bit0; rel8 { jbrs(byte0pf, bit0, rel8); }
+:JBRS byte1pf^"."^bit0, rel8 is byte1pf; bitop0 = (0x30>>3) & bit0; rel8 { jbrs(byte1pf, bit0, rel8); }
+:JBRS byte2pf^"."^bit0, rel8 is byte2pf; bitop0 = (0x30>>3) & bit0; rel8 { jbrs(byte2pf, bit0, rel8); }
 
-:DJNZ ACCL, rel8 is op0 = 0xBC; op0 = 0xEA; rel8 & ACCL { lb(ACCL-1); if ($(Z) == 0) goto rel8; }
+macro jbs(op, bit, rel8) {
+  if (op & (1<<bit)) goto rel8;
+}
 
+:JBS ACCL^"."^bit0, rel8 is op0 = 0xBC; bitop0 = (0x28>>3) & bit0; rel8 & ACCL { jbs(ACCL, bit0, rel8); }
+:JBS byte0pf^"."^bit0, rel8 is byte0pf; bitop0 = (0x28>>3) & bit0; rel8 { jbs(byte0pf, bit0, rel8); }
+:JBS byte1pf^"."^bit0, rel8 is byte1pf; bitop0 = (0x28>>3) & bit0; rel8 { jbs(byte1pf, bit0, rel8); }
+:JBS byte2pf^"."^bit0, rel8 is byte2pf; bitop0 = (0x28>>3) & bit0; rel8 { jbs(byte2pf, bit0, rel8); }
+
+macro jbsr(op, bit, rel8) {
+  # jumps if bit was 1, but unconditionally set bit to 1 so we can assume it afterward
+  s = (op & (1<<bit)) == 1;
+  op = op & ~(1<<bit);
+  if (s) goto rel8;
+}
+
+:JBSR ACCL^"."^bit0, rel8 is op0 = 0xBC; bitop0 = (0x38>>3) & bit0; rel8 & ACCL { jbsr(ACCL, bit0, rel8); }
+:JBSR byte0pf^"."^bit0, rel8 is byte0pf; bitop0 = (0x38>>3) & bit0; rel8 { jbsr(byte0pf, bit0, rel8); }
+:JBSR byte1pf^"."^bit0, rel8 is byte1pf; bitop0 = (0x38>>3) & bit0; rel8 { jbsr(byte1pf, bit0, rel8); }
+:JBSR byte2pf^"."^bit0, rel8 is byte2pf; bitop0 = (0x38>>3) & bit0; rel8 { jbsr(byte2pf, bit0, rel8); }
+
+
+:DJNZ ACCL, rel8 is op0 = 0xBC; op0 = 0xEA; rel8 & ACCL { lb(ACCL-1); if (ZF == 0) goto rel8; }
+
+:TJNZ ACC, rel8 is dd = 1 & op0 = 0xBC; op0 = 0xA6; rel8 & ACC { if (ACC != 0) goto rel8; }
+:TJNZ word0pf, rel8 is word0pf; op0 = 0xA6; rel8 { if (word0pf != 0) goto rel8; }
+:TJNZ word1pf, rel8 is word1pf; op0 = 0xA6; rel8 { if (word1pf != 0) goto rel8; }
+:TJNZ word2pf, rel8 is word2pf; op0 = 0xA6; rel8 { if (word2pf != 0) goto rel8; }
+:TJNZB ACCL, rel8 is dd = 0 & op0 = 0xBC; op0 = 0xA6; rel8 & ACCL { if (ACCL != 0) goto rel8; }
+:TJNZB byte0pf, rel8 is byte0pf; op0 = 0xA6; rel8 { if (byte0pf != 0) goto rel8; }
+:TJNZB byte1pf, rel8 is byte1pf; op0 = 0xA6; rel8 { if (byte1pf != 0) goto rel8; }
+:TJNZB byte2pf, rel8 is byte2pf; op0 = 0xA6; rel8 { if (byte2pf != 0) goto rel8; }
+
+:TJZ ACC, rel8 is dd = 1 & op0 = 0xBC; op0 = 0xA7; rel8 & ACC { if (ACC == 0) goto rel8; }
+:TJZ word0pf, rel8 is word0pf; op0 = 0xA7; rel8 { if (word0pf == 0) goto rel8; }
+:TJZ word1pf, rel8 is word1pf; op0 = 0xA7; rel8 { if (word1pf == 0) goto rel8; }
+:TJZ word2pf, rel8 is word2pf; op0 = 0xA7; rel8 { if (word2pf == 0) goto rel8; }
+:TJZB ACCL, rel8 is dd = 0 & op0 = 0xBC; op0 = 0xA7; rel8 & ACCL { if (ACCL == 0) goto rel8; }
+:TJZB byte0pf, rel8 is byte0pf; op0 = 0xA7; rel8 { if (byte0pf == 0) goto rel8; }
+:TJZB byte1pf, rel8 is byte1pf; op0 = 0xA7; rel8 { if (byte1pf == 0) goto rel8; }
+:TJZB byte2pf, rel8 is byte2pf; op0 = 0xA7; rel8 { if (byte2pf == 0) goto rel8; }
