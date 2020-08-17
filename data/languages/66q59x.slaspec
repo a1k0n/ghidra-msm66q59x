@@ -42,14 +42,28 @@ define token instr(8)
 	regop0 = (3, 7)
 	reg8 = (0, 2)
 	reg16 = (0, 2)
+    r45switch = (7, 7)
+    caddr11h0 = (0, 1)
+    caddr11h1 = (2, 3)
+    caddr11h2 = (4, 4)
+    caddr11h3 = (5, 7)
+;
+
+define token prefixtok(8)
+    prefix = (0, 7)
+	preregop0 = (3, 7)
+	prereg8 = (0, 2)
+	prereg16 = (0, 2)
+;
+
+define token suffixtok(8)
     n8 = (0, 7)
     rdiff8 = (0, 7) signed
     rdiff7 = (0, 6) signed
-    r45switch = (7, 7)
 ;
 
-attach variables [ reg8 ] [ R0 R1 R2 R3 R4 R5 R6 R7 ];
-attach variables [ reg16] [ X1 X2 DP USP ER0 ER1 ER2 ER3 ];
+attach variables [ reg8 prereg8 ] [ R0 R1 R2 R3 R4 R5 R6 R7 ];
+attach variables [ reg16 prereg16 ] [ X1 X2 DP USP ER0 ER1 ER2 ER3 ];
 
 define token imm16token(16) n16 = (0, 15);
 
@@ -71,13 +85,13 @@ sfr8: n8   is n8               { export *[ram]:1 n8; }
 # trying to combine these into one table leads to "ellipsis in middle of pattern"
 # which is a no-no in SLEIGH, so we have to make three cases for every byte-
 # or word-prefixed instruction.
-byte0pf: reg8 is regop0 = (0x68 >> 3) & reg8 { export reg8; }
-byte0pf: PSWL is op0 = 0x8A & PSWL { packflags(PSW); export PSWL; }
-byte0pf: PSWH is op0 = 0x9A & PSWH { packflags(PSW); export PSWH; }
-byte1pf: fix8 is op0 = 0xB4; fix8  { export fix8; }
-byte1pf: off8 is op0 = 0xB5; off8  { export off8; }
-byte1pf: sfr8 is op0 = 0xB6; sfr8  { export sfr8; }
-byte2pf: n16  is op0 = 0xB7; n16   { export *[ram]:1 n16; }
+byte0pf: prereg8 is preregop0 = 0x0D & prereg8 { export prereg8; }
+byte0pf: PSWL is prefix = 0x8A & PSWL { packflags(PSW); export PSWL; }
+byte0pf: PSWH is prefix = 0x9A & PSWH { packflags(PSW); export PSWH; }
+byte1pf: fix8 is prefix = 0xB4; fix8  { export fix8; }
+byte1pf: off8 is prefix = 0xB5; off8  { export off8; }
+byte1pf: sfr8 is prefix = 0xB6; sfr8  { export sfr8; }
+byte2pf: n16  is prefix = 0xB7; n16   { export *[ram]:1 n16; }
 
 fix16: "fix" n8 is n8 { tmp:2 = 0x200 + n8; export *[ram]:2 tmp; }
 off16: "off" n8 is n8 { tmp:2 = (LRB & 0xff00) + n8; export *[ram]:2 tmp; }
@@ -87,20 +101,45 @@ sfr16: PSW is n8 = 0x04 & PSW { packflags(PSW); export PSW; }
 sfr16: ACC is n8 = 0x06 & ACC { export ACC; }
 sfr16: n8  is n8              { export *[ram]:2 n8; }
 
-word0pf: reg16 is regop0 = (0x60>>3) & reg16 { export reg16; }
-word1pf: fix16 is op0 = 0xA4; fix16 { export fix16; }
-word1pf: off16 is op0 = 0xA5; off16 { export off16; }
-word1pf: sfr16 is op0 = 0xA6; sfr16 { export sfr16; }
-word2pf: n16   is op0 = 0xA7; n16   { export *[ram]:2 n16; }
-word2pf: n16[X1] is op0 = 0xA8; n16 & X1 { tmp:2 = n16+X1; export *[ram]:2 tmp; }
-word2pf: n16[X2] is op0 = 0xA9; n16 & X2 { tmp:2 = n16+X2; export *[ram]:2 tmp; }
- 
+word0pf: prereg16 is preregop0 = 0x0C & prereg16 { export prereg16; }
+word1pf: fix16 is prefix = 0xA4; fix16 { export fix16; }
+word1pf: off16 is prefix = 0xA5; off16 { export off16; }
+word1pf: sfr16 is prefix = 0xA6; sfr16 { export sfr16; }
+word2pf: n16   is prefix = 0xA7; n16   { export *[ram]:2 n16; }
+word2pf: n16[X1] is prefix = 0xA8; n16 & X1 { tmp:2 = n16+X1; export *[ram]:2 tmp; }
+word2pf: n16[X2] is prefix = 0xA9; n16 & X2 { tmp:2 = n16+X2; export *[ram]:2 tmp; }
+
+macro push(obj) {
+  SSP = SSP-2;
+  *[ram]:2 SSP = obj;
+}
+
+macro pop(obj) {
+  obj = *[ram]:2 SSP;
+  SSP = SSP+2;
+}
+
 :NOP is op0 = 0x00 { goto inst_next; }
 
-:RT is op0 = 0x01 { PC = *:2 SSP; SSP = SSP+2; return [PC]; }
+:RT is op0 = 0x01 { pop(PC); return [PC]; }
 
-# FIXME: I am sure this indirect reference is wrong
-:BRK is op0 = 0xff { brk_vec:2 = 0x02; return [brk_vec]; }
+ACALaddr11: caddr11 is caddr11h0 & caddr11h2 & caddr11h1 = 1 & caddr11h3 = 2; n8
+  [caddr11 = 0x1000 + (caddr11h0 << 8) + (caddr11h2 << 10) + n8;]
+  { export *[rom]:1 caddr11; }
+
+:ACAL ACALaddr11 is ACALaddr11 { push(&:2 inst_next); call ACALaddr11; }
+
+:BRK is op0 = 0xff { local brk_vec = *[rom]:1 0x02:2; return [brk_vec]; }
+
+:CLR ACC is op0 = 0xFA & ACC [ dd=1; globalset(inst_next, dd); ] { ZF = 1; ACC = 0; }
+:CLR word0pf is word0pf; op0=0xC7 { word0pf = 0; }
+:CLR word1pf is word1pf; op0=0xC7 { word1pf = 0; }
+:CLR word2pf is word2pf; op0=0xC7 { word2pf = 0; }
+
+:CLRB ACCL is op0 = 0xFB & ACCL [ dd=0; globalset(inst_next, dd); ] { ZF = 1; ACCL = 0; }
+:CLRB byte0pf is byte0pf; op0=0xC7 { byte0pf = 0; }
+:CLRB byte1pf is byte1pf; op0=0xC7 { byte1pf = 0; }
+:CLRB byte2pf is byte2pf; op0=0xC7 { byte2pf = 0; }
 
 :MOVB reg8, #n8 is regop0 = (0x10>>3) & reg8; n8 { reg8 = n8; }
 :MOVB sfr8, #n8 is op0 = 0xD6; sfr8; n8 { sfr8 = n8; }
@@ -153,9 +192,11 @@ word2pf: n16[X2] is op0 = 0xA9; n16 & X2 { tmp:2 = n16+X2; export *[ram]:2 tmp; 
 :MOV sfr16, #n16 is op0 = 0xC6; sfr16; n16     { sfr16 = n16; }
 :MOV off16, #n16 is op0 = 0xC7; off16; n16     { off16 = n16; }
 
-:RB byte0pf^"."^bit0 is byte0pf; bitop0 = 0 & bit0 { byte0pf = byte0pf & ~(1 << bit0); }
-:RB byte1pf^"."^bit0 is byte1pf; bitop0 = 0 & bit0 { byte1pf = byte1pf & ~(1 << bit0); }
-:RB byte2pf^"."^bit0 is byte2pf; bitop0 = 0 & bit0 { byte2pf = byte2pf & ~(1 << bit0); }
+# these are causing collisions with LB A, #imm8 when imm8 < 0x10; what?!
+# fixme: set ZF based on previous bit
+:RB byte0pf^"."^bit0 is byte0pf; bitop0 = 0x00 & bit0 { byte0pf = byte0pf & ~(1 << bit0); }
+:RB byte1pf^"."^bit0 is byte1pf; bitop0 = 0x00 & bit0 { byte1pf = byte1pf & ~(1 << bit0); }
+:RB byte2pf^"."^bit0 is byte2pf; bitop0 = 0x00 & bit0 { byte2pf = byte2pf & ~(1 << bit0); }
 
 :SB byte0pf^"."^bit0 is byte0pf; bitop0 = 0x01 & bit0 { byte0pf = byte0pf | (1 << bit0); }
 :SB byte1pf^"."^bit0 is byte1pf; bitop0 = 0x01 & bit0 { byte1pf = byte1pf | (1 << bit0); }
@@ -171,19 +212,19 @@ macro lb(op8) {
   ZF = ACCL == 0;
 }
 
-:L ACC, #n16 is op0 = 0xF8; n16 & ACC       [ dd=1; globalset(inst_next, dd); ] { l(n16); }
-:L ACC, reg16  is regop0 = 0x0e & reg16 & ACC  [ dd=1; globalset(inst_next, dd); ] { l(reg16); }
+:L ACC, #n16 is op0 = 0xF8; n16 & ACC         [ dd=1; globalset(inst_next, dd); ] { l(n16); }
+:L ACC, reg16  is regop0 = 0x0e & reg16 & ACC [ dd=1; globalset(inst_next, dd); ] { l(reg16); }
 :L ACC, fix16  is op0 = 0x84; fix16 & ACC     [ dd=1; globalset(inst_next, dd); ] { l(fix16); }
 :L ACC, off16  is op0 = 0x85; off16 & ACC     [ dd=1; globalset(inst_next, dd); ] { l(off16); }
 :L ACC, sfr16  is op0 = 0x86; sfr16 & ACC     [ dd=1; globalset(inst_next, dd); ] { l(sfr16); }
 
-:LB ACCL, #n8 is op0 = 0xF9; n8 & ACCL      [ dd=0; globalset(inst_next, dd); ] { lb(n8); }
+:LB ACCL, #n8 is op0 = 0xF9; n8 & ACCL        [ dd=0; globalset(inst_next, dd); ] { lb(n8); }
 :LB ACCL, reg8 is regop0 = 0x0F & ACCL & reg8 [ dd=0; globalset(inst_next, dd); ] { lb(reg8); }
 :LB ACCL, fix8 is op0 = 0x94; fix8 & ACCL     [ dd=0; globalset(inst_next, dd); ] { lb(fix8); }
 :LB ACCL, off8 is op0 = 0x95; off8 & ACCL     [ dd=0; globalset(inst_next, dd); ] { lb(off8); }
 :LB ACCL, sfr8 is op0 = 0x96; sfr8 & ACCL     [ dd=0; globalset(inst_next, dd); ] { lb(sfr8); }
 
-:STB ACCL, reg8 is dd = 0 & regop0 = 0x06 & ACCL & reg8 { reg8 = ACCL; }
+:STB ACCL, reg8 is dd = 0 & regop0 = (0x38>>3) & ACCL & reg8 { reg8 = ACCL; }
 :STB ACCL, fix8 is dd = 0 & op0 = 0x34; fix8 & ACCL     { fix8 = ACCL; }
 :STB ACCL, off8 is dd = 0 & op0 = 0x35; off8 & ACCL     { off8 = ACCL; }
 :STB ACCL, sfr8 is dd = 0 & op0 = 0x36; sfr8 & ACCL     { sfr8 = ACCL; }
