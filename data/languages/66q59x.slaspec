@@ -89,36 +89,36 @@ sfr16: PSW is n8 = 0x04 & PSW { packflags(PSW); export PSW; }
 sfr16: ACC is n8 = 0x06 & ACC { export ACC; }
 sfr16: n8  is n8              { export *[ram]:2 n8; }
 
-op1fix8: op1fix8 is fix8 { export fix8; }
-op1sfr8: op1sfr8 is sfr8 { export sfr8; }
-op1off8: op1off8 is off8 { export off8; }
-op1fix16: op1fix16 is fix16 { export fix16; }
-op1sfr16: op1sfr16 is sfr16 { export sfr16; }
-op1off16: op1off16 is off16 { export off16; }
+op1fix8: fix8 is fix8 { export fix8; }
+op1sfr8: sfr8 is sfr8 { export sfr8; }
+op1off8: off8 is off8 { export off8; }
+op1fix16: fix16 is fix16 { export fix16; }
+op1sfr16: sfr16 is sfr16 { export sfr16; }
+op1off16: off16 is off16 { export off16; }
 
-A8: A is epsilon { export AL; }
-A16: A is epsilon { export ACC; }
-A_8: A is epsilon { export AL; }
-A_16: A is epsilon { export ACC; } 
+A8: "A" is epsilon { export AL; }
+A16: "A" is epsilon { export ACC; }
+A_8: "A" is epsilon { export AL; }
+A_16: "A" is epsilon { export ACC; } 
 
-DPindw: [DP] is epsilon { export *[ram]:2 DP; }
-DPindincw: [DP+] is epsilon { local a = *[ram]:2 DP; DP = DP+1; export a; }
-DPinddecw: [DP-] is epsilon { local a = *[ram]:2 DP; DP = DP-1; export a; }
-DPindb: [DP] is epsilon { export *[ram]:1 DP; }
-DPindincb: [DP+] is epsilon { local a = *[ram]:1 DP; DP = DP+1; export a; }
-DPinddecb: [DP-] is epsilon { local a = *[ram]:1 DP; DP = DP-1; export a; }
+DPindw: [DP] is epsilon & DP { export *[ram]:2 DP; }
+DPindincw: [DP+] is epsilon & DP { local a = *[ram]:2 DP; DP = DP+1; export a; }
+DPinddecw: [DP-] is epsilon & DP { local a = *[ram]:2 DP; DP = DP-1; export a; }
+DPindb: [DP] is epsilon & DP { export *[ram]:1 DP; }
+DPindincb: [DP+] is epsilon & DP { local a = *[ram]:1 DP; DP = DP+1; export a; }
+DPinddecb: [DP-] is epsilon & DP { local a = *[ram]:1 DP; DP = DP-1; export a; }
 
-X1indw: [X1] is epsilon { export *[ram]:2 X1; }
-X1indb: [X1] is epsilon { export *[ram]:1 X1; }
+X1indw: [X1] is epsilon & X1 { export *[ram]:2 X1; }
+X1indb: [X1] is epsilon & X1 { export *[ram]:1 X1; }
 X1immw: op1n16[X1] is op1n16 & X1 { local a = X1+op1n16; export *[ram]:2 a; }
 X1immb: op1n16[X1] is op1n16 & X1 { local a = X1+op1n16; export *[ram]:1 a; }
-X1plusAw: [X1+A] is epsilon { local a = X1+zext(AL); export *[ram]:2 a; }
-X1plusAb: [X1+A] is epsilon { local a = X1+zext(AL); export *[ram]:1 a; }
-X1plusR0w: [X1+R0] is epsilon { local a = X1+zext(R0); export *[ram]:2 a; }
-X1plusR0b: [X1+R0] is epsilon { local a = X1+zext(R0); export *[ram]:1 a; }
+X1plusAw: [X1+AL] is epsilon & X1 & AL { local a = X1+zext(AL); export *[ram]:2 a; }
+X1plusAb: [X1+AL] is epsilon & X1 & AL { local a = X1+zext(AL); export *[ram]:1 a; }
+X1plusR0w: [X1+R0] is epsilon & X1 & R0 { local a = X1+zext(R0); export *[ram]:2 a; }
+X1plusR0b: [X1+R0] is epsilon & X1 & R0 { local a = X1+zext(R0); export *[ram]:1 a; }
 
-X2immw: op1n16[X2] is op1n16 { local a = X2+op1n16; export *[ram]:2 a; }
-X2immb: op1n16[X2] is op1n16 { local a = X2+op1n16; export *[ram]:1 a; }
+X2immw: op1n16[X2] is op1n16 & X2 { local a = X2+op1n16; export *[ram]:2 a; }
+X2immb: op1n16[X2] is op1n16 & X2 { local a = X2+op1n16; export *[ram]:1 a; }
 
 macro push(obj) {
   SSP = SSP-2;
