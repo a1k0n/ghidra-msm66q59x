@@ -45,6 +45,8 @@ define token instr(8)
     caddr11h3 = (5, 7)
     sba6 = (0, 5)
     sbaop = (6, 7)
+    n7reg = (7, 7)
+    n7 = (0, 6) signed
 ;
 
 define token preofftok(8)
@@ -143,6 +145,15 @@ sbafix: "sbafix" sbaddr is sba6 [ sbaddr = sba6 + 0x2C0; ] { export *[ram]:1 sba
 sbaoff: "sbaoff" sbaddr is sba6 [ sbaddr = sba6 + 0x0C0 + (LRBH & 0xff00); ] { export *[ram]:1 sbaddr; }
 
 width: width is widthbits [ width = widthbits+1; ] { local w:1 = width; export w; }
+
+n7b: n7[DP] is n7reg=0 & n7 & DP { local a = DP + n7; export *[ram]:1 a; }
+n7b: n7[USP] is n7reg=1 & n7 & USP { local a = USP + n7; export *[ram]:1 a; }
+n7w: n7[DP] is n7reg=0 & n7 & DP { local a = DP + n7; export *[ram]:2 a; }
+n7w: n7[USP] is n7reg=1 & n7 & USP { local a = USP + n7; export *[ram]:2 a; }
+n7pb: n7[DP] is n7reg=0 & n7 & DP { local a = DP + n7; export *[ram]:1 a; }
+n7pb: n7[USP] is n7reg=1 & n7 & USP { local a = USP + n7; export *[ram]:1 a; }
+n7pw: n7[DP] is n7reg=0 & n7 & DP { local a = DP + n7; export *[ram]:2 a; }
+n7pw: n7[USP] is n7reg=1 & n7 & USP { local a = USP + n7; export *[ram]:2 a; }
 
 macro push(obj) {
   SSP = SSP-2;
