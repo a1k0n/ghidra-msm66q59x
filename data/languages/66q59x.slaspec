@@ -105,8 +105,6 @@ A8: AL is epsilon & AL { export AL; }
 A16: ACC is epsilon & ACC { export ACC; }
 A16indb: [ACC] is epsilon & ACC { export *[ram]:1 ACC; }
 A16indw: [ACC] is epsilon & ACC { export *[ram]:2 ACC; }
-A_8: AL is epsilon & AL { export AL; }
-A_16: ACC is epsilon & ACC { export ACC; } 
 
 DPindw: [DP] is epsilon & DP { export *[ram]:2 DP; }
 DPindincw: [DP+] is epsilon & DP { local a = *[ram]:2 DP; DP = DP+1; export a; }
@@ -144,7 +142,7 @@ X1plusR0b2: [X1+R0] is epsilon & X1 & R0 { local a = X1+zext(R0); export *[ram]:
 sbafix: "sbafix" sbaddr is sba6 [ sbaddr = sba6 + 0x2C0; ] { export *[ram]:1 sbaddr; }
 sbaoff: "sbaoff" sbaddr is sba6 [ sbaddr = sba6 + 0x0C0 + (LRBH & 0xff00); ] { export *[ram]:1 sbaddr; }
 
-width: width is widthbits [ width = widthbits+1; ] { export width; }
+width: width is widthbits [ width = widthbits+1; ] { local w:1 = width; export w; }
 
 macro push(obj) {
   SSP = SSP-2;
