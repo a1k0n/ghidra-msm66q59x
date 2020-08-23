@@ -13,21 +13,13 @@ define register offset=0x20 size=1 [CSR TSR DSR ROMWIN];
 define register offset=0x30 size=4 [contextreg];
 # taking a cue from x86, define pseudo-registers for each flag separately,
 # otherwise decompilation is a mess
-define register offset=0x40 size=1 [CF ZF SF OVF];
-
-# @define C   "PSW[15,1]"
-# @define Z   "PSW[14,1]"
-# @define HC  "PSW[13,1]"
-# @define DD  "PSW[12,1]"
-# @define S   "PSW[11,1]"
-# @define MIP "PSW[10,1]"
-# @define OV  "PSW[9,1]"
+define register offset=0x40 size=1 [C Z S OV];
 
 macro packflags(psw) {
-  psw = (0x8000 * zext(CF&1))
-      | (0x4000 * zext(ZF&1))
-      | (0x0800 * zext(SF&1))
-      | (0x0200 * zext(OVF&1))
+  psw = (0x8000 * zext(C&1))
+      | (0x4000 * zext(Z&1))
+      | (0x0800 * zext(S&1))
+      | (0x0200 * zext(OV&1))
       | (0x35ff & psw);
 }
 
@@ -38,11 +30,14 @@ define context contextreg
 define token instr(8)
 	op = (0, 7)
 	bitop0 = (3, 7)
-	bit0 = (0, 2) dec
+	bit = (0, 2) dec
 	regop0 = (3, 7)
 	reg8 = (0, 2)
 	reg16 = (0, 2)
-    r45switch = (7, 7)
+	hregop0 = (2, 7)
+	ERn = (0, 1)
+	PRn = (0, 1)
+	Rn = (0, 2)
     caddr11h0 = (0, 1)
     caddr11h1 = (2, 3)
     caddr11h2 = (4, 4)
@@ -59,17 +54,21 @@ define token preofftok(8)
 define token sufofftok(8)
     n8 = (0, 7)
     rdiff8 = (0, 7) signed
+    r45switch = (7, 7)
     rdiff7 = (0, 6) signed
 ;
 
-attach variables [ reg8 prereg8 ] [ R0 R1 R2 R3 R4 R5 R6 R7 ];
+attach variables [ reg8 prereg8 Rn ] [ R0 R1 R2 R3 R4 R5 R6 R7 ];
 attach variables [ reg16 prereg16 ] [ X1 X2 DP USP ER0 ER1 ER2 ER3 ];
+attach variables [ PRn ] [ X1 X2 DP USP ];
+attach variables [ ERn ] [ ER0 ER1 ER2 ER3 ];
+attach variables [ r45switch ] [ R4 R5 ];
 
 define token imm16token(16) n16 = (0, 15) op1n16 = (0, 15);
 
 rel8: relAddr is rdiff8 [ relAddr = inst_next+rdiff8; ] { export *[rom]:1 relAddr; }
 
-fix8: "fix" n8 is n8 { tmp:2 = 0x200 + n8; export *[ram]:1 tmp; }
+fix8: "fix" fixaddr is n8 [ fixaddr = 0x200 + n8; ] { export *[ram]:1 fixaddr; }
 off8: "off" n8 is n8 { tmp:2 = (LRB & 0xff00) + n8; export *[ram]:1 tmp; }
 sfr8: SSPL is n8 = 0x00 & SSPL { export SSPL; }
 sfr8: SSPH is n8 = 0x01 & SSPH { export SSPH; }
@@ -81,7 +80,10 @@ sfr8: AL   is n8 = 0x06 & AL   { export AL; }
 sfr8: AH   is n8 = 0x07 & AH   { export AH; }
 sfr8: n8   is n8               { export *[ram]:1 n8; }
 
-fix16: "fix" n8 is n8 { tmp:2 = 0x200 + n8; export *[ram]:2 tmp; }
+op1n16b: op1n16 is op1n16 { export *[ram]:1 op1n16; }
+op1n16w: op1n16 is op1n16 { export *[ram]:2 op1n16; }
+
+fix16: "fix" fixaddr is n8 [ fixaddr = 0x200 + n8; ] { export *[ram]:2 fixaddr; }
 off16: "off" n8 is n8 { tmp:2 = (LRB & 0xff00) + n8; export *[ram]:2 tmp; }
 sfr16: SSP is n8 = 0x00 & SSP { export SSP; }
 sfr16: LRB is n8 = 0x02 & LRB { export LRB; }
@@ -131,3 +133,11 @@ macro pop(obj) {
 }
 
 @include "nx8-500s.sinc"
+
+# implement ACAL here as it's a special case
+
+ACALaddr11: caddr11 is caddr11h0 & caddr11h2 & caddr11h1 = 1 & caddr11h3 = 2; n8
+  [caddr11 = 0x1000 + (caddr11h0 << 8) + (caddr11h2 << 10) + n8;]
+  { export *[rom]:1 caddr11; }
+
+:ACAL ACALaddr11 is ACALaddr11 { push(&:2 inst_next); call ACALaddr11; }
