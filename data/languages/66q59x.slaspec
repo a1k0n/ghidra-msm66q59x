@@ -60,7 +60,7 @@ define token sufofftok(8)
     n8 = (0, 7)
     rdiff8 = (0, 7) signed
     r45switch = (7, 7)
-    rdiff7 = (0, 6) signed
+    rdiff7 = (0, 6)
 ;
 
 attach variables [ reg8 prereg8 Rn ] [ R0 R1 R2 R3 R4 R5 R6 R7 ];
@@ -72,6 +72,7 @@ attach variables [ r45switch ] [ R4 R5 ];
 define token imm16token(16) n16 = (0, 15) op1n16 = (0, 15);
 
 rel8: relAddr is rdiff8 [ relAddr = inst_next+rdiff8; ] { export *[rom]:1 relAddr; }
+rel7: relAddr is rdiff7 [ relAddr = inst_next-0x80+rdiff7; ] { export *[rom]:1 relAddr; }
 
 fix8: "fix" fixaddr is n8 [ fixaddr = 0x200 + n8; ] { export *[ram]:1 fixaddr; }
 off8: "off" offaddr is n8 [ offaddr = (LRB & 0xff00) + n8; ] { export *[ram]:1 offaddr; }
@@ -190,6 +191,10 @@ macro op_stb(op1, op2) { op2 = op1; }
 macro op_clr(op) { op = 0; Z = 1; }
 macro op_clrb(op) { op = 0; Z = 1; }
 
+macro op_rb(op, bit) { op = op & ~(1<<bit); }
+macro op_sb(op, bit) { op = op | (1<<bit); }
+macro op_lmb(c, op, bit) { C = ((op>>bit)&1) == 1; }
+macro op_smb(op, bit, c) { op = (op & ~(1<<bit)) | (zext(c)<<bit); }
 macro op_inc(op) { op = op + 1; Z = op == 0; OV = op == 0; S = op s< 0; }
 macro op_incb(op) { op = op + 1; Z = op == 0; OV = op == 0; S = op s< 0; }
 macro op_dec(op) { OV = op == 0; op = op - 1; Z = op == 0; S = op s< 0; }
@@ -200,10 +205,19 @@ macro op_cmp(op1, op2) { C=(op1<op2); Z=(op1==op2); S=(op1-op2) s< 0; OV=sborrow
 macro op_cmpb(op1, op2) { op_cmp(op1, op2); }
 macro op_sub(op1, op2) { op_cmp(op1, op2); op1 = op1 - op2; }
 macro op_subb(op1, op2) { op_sub(op1, op2); }
-macro op_sll(op, width) { op = op << width; } 
-macro op_sllb(op, width) { op = op << width; } 
+macro op_sll(op, width) { local t = op<<(width-1); C = t s< 0; op = op << width; } 
+macro op_sllb(op, width) { local t = op<<(width-1); C = t s< 0; op = op << width; }
+ 
+macro op_roln(op, width, n) {
+  local t = op<<(width-1);
+  newC = t s< 0;
+  op = (op<<width) | (zext(C)<<(width-1)) | (op >> (n-width+1));
+  C = newC;
+}
 
-macro op_nop() { goto inst_next; }
+macro op_rol(op, width) { op_roln(op, width, 16); }
+macro op_rolb(op, width) { op_roln(op, width, 8); }
+macro op_nop() { }
 macro op_rt() { pop(PC); return [PC]; }
 
 macro op_j(addr) { goto addr; }
@@ -216,6 +230,7 @@ macro op_jps(rel8) { if (S == 0) goto rel8; }
 macro op_jge(rel8) { if (C == 0) goto rel8; }
 macro op_jne(rel8) { if (Z == 0) goto rel8; }
 macro op_jle(rel8) { if (Z == 1 || C == 1) goto rel8; }
+macro op_djnz(op, addr) { op = op-1; if(op == 0) goto addr; }
 macro op_jbr(op, bit, rel8) { if ((op & (1<<bit)) == 0) goto rel8; }
 macro op_jbs(op, bit, rel8) { if (op & (1<<bit)) goto rel8; }
 
