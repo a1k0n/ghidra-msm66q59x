@@ -130,6 +130,8 @@ X2immb: op1n16[X2] is op1n16 & X2 { local a = X2+op1n16; export *[ram]:1 a; }
 # second copy because these can appear in both operands
 X1indw2: [X1] is epsilon & X1 { export *[ram]:2 X1; }
 X1indb2: [X1] is epsilon & X1 { export *[ram]:1 X1; }
+X1immw2: op1n16[X1] is op1n16 & X1 { local a = X1+op1n16; export *[ram]:2 a; }
+X1immb2: op1n16[X1] is op1n16 & X1 { local a = X1+op1n16; export *[ram]:1 a; }
 DPindw2: [DP] is epsilon & DP { export *[ram]:2 DP; }
 DPindincw2: [DP+] is epsilon & DP { local a = *[ram]:2 DP; DP = DP+1; export a; }
 DPinddecw2: [DP-] is epsilon & DP { local a = *[ram]:2 DP; DP = DP-1; export a; }
@@ -140,6 +142,8 @@ X1plusAw2: [X1+AL] is epsilon & X1 & AL { local a = X1+zext(AL); export *[ram]:2
 X1plusAb2: [X1+AL] is epsilon & X1 & AL { local a = X1+zext(AL); export *[ram]:1 a; }
 X1plusR0w2: [X1+R0] is epsilon & X1 & R0 { local a = X1+zext(R0); export *[ram]:2 a; }
 X1plusR0b2: [X1+R0] is epsilon & X1 & R0 { local a = X1+zext(R0); export *[ram]:1 a; }
+X2immw2: op1n16[X2] is op1n16 & X2 { local a = X2+op1n16; export *[ram]:2 a; }
+X2immb2: op1n16[X2] is op1n16 & X2 { local a = X2+op1n16; export *[ram]:1 a; }
 
 sbafix: "sbafix" sbaddr is sba6 [ sbaddr = sba6 + 0x2C0; ] { export *[ram]:1 sbaddr; }
 sbaoff: "sbaoff" sbaddr is sba6 [ sbaddr = sba6 + 0x0C0 + (LRBH & 0xff00); ] { export *[ram]:1 sbaddr; }
@@ -155,6 +159,13 @@ n7pb: n7[USP] is n7reg=1 & n7 & USP { local a = USP + n7; export *[ram]:1 a; }
 n7pw: n7[DP] is n7reg=0 & n7 & DP { local a = DP + n7; export *[ram]:2 a; }
 n7pw: n7[USP] is n7reg=1 & n7 & USP { local a = USP + n7; export *[ram]:2 a; }
 
+Cadr: n16 is n16 { export *[rom]:1 n16; }
+
+indw_reg16: [reg16] is reg16 { export *[ram]:2 reg16; }
+indb_reg16: [reg16] is reg16 { export *[ram]:1 reg16; }
+indw_X1indw: [indw_X1indw] is X1indw { export *[ram]:2 X1indw; }
+indb_X1indw: [indb_X1indw] is X1indw { export *[ram]:1 X1indw; }
+
 macro push(obj) {
   SSP = SSP-2;
   *[ram]:2 SSP = obj;
@@ -165,6 +176,16 @@ macro pop(obj) {
   SSP = SSP+2;
 }
 
+macro op_brk() { local a = *[rom]:1 0x02:2; return [a]; }
+macro op_j(addr) { goto addr; }
+macro op_l(op1, op2) { op1 = op2; }
+macro op_lb(op1, op2) { op1 = op2; }
+macro op_mov(op1, op2) { op1 = op2; }
+macro op_movb(op1, op2) { op1 = op2; }
+macro op_st(op1, op2) { op2 = op1; }
+macro op_stb(op1, op2) { op2 = op1; }
+macro op_nop() { goto inst_next; }
+
 @include "nx8-500s.sinc"
 
 # implement ACAL here as it's a special case
@@ -173,4 +194,7 @@ ACALaddr11: caddr11 is caddr11h0 & caddr11h2 & caddr11h1 = 1 & caddr11h3 = 2; n8
   [caddr11 = 0x1000 + (caddr11h0 << 8) + (caddr11h2 << 10) + n8;]
   { export *[rom]:1 caddr11; }
 
-:ACAL ACALaddr11 is ACALaddr11 { push(&:2 inst_next); call ACALaddr11; }
+:ACAL ACALaddr11 is ACALaddr11 {
+	# push(&:2 inst_next);
+	call ACALaddr11;
+}
