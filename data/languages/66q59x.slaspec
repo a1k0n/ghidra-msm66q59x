@@ -87,6 +87,8 @@ sfr8: n8   is n8               { export *[ram]:1 n8; }
 
 op1n16b: op1n16 is op1n16 { export *[ram]:1 op1n16; }
 op1n16w: op1n16 is op1n16 { export *[ram]:2 op1n16; }
+op2n16b: op1n16 is op1n16 { export *[ram]:1 op1n16; }
+op2n16w: op1n16 is op1n16 { export *[ram]:2 op1n16; }
 
 fix16: "fix" fixaddr is n8 [ fixaddr = 0x200 + n8; ] { export *[ram]:2 fixaddr; }
 off16: "off" offaddr is n8 [ offaddr = (LRB & 0xff00) + n8; ] { export *[ram]:2 offaddr; }
@@ -177,14 +179,59 @@ macro pop(obj) {
 }
 
 macro op_brk() { local a = *[rom]:1 0x02:2; return [a]; }
-macro op_j(addr) { goto addr; }
-macro op_l(op1, op2) { op1 = op2; }
-macro op_lb(op1, op2) { op1 = op2; }
+macro op_l(op1, op2) { op1 = op2; Z = op1 == 0; }
+macro op_lb(op1, op2) { op1 = op2; Z = op1 == 0; }
+macro op_lc(op1, op2) { op1 = op2; Z = op1 == 0; }
+macro op_lcb(op1, op2) { op1 = op2; Z = op1 == 0; }
 macro op_mov(op1, op2) { op1 = op2; }
 macro op_movb(op1, op2) { op1 = op2; }
 macro op_st(op1, op2) { op2 = op1; }
 macro op_stb(op1, op2) { op2 = op1; }
+macro op_clr(op) { op = 0; Z = 1; }
+macro op_clrb(op) { op = 0; Z = 1; }
+
+macro op_inc(op) { op = op + 1; Z = op == 0; OV = op == 0; S = op s< 0; }
+macro op_incb(op) { op = op + 1; Z = op == 0; OV = op == 0; S = op s< 0; }
+macro op_dec(op) { OV = op == 0; op = op - 1; Z = op == 0; S = op s< 0; }
+macro op_decb(op) { OV = op == 0; op = op - 1; Z = op == 0; S = op s< 0; }
+macro op_add(op1, op2) { C=carry(op1, op2); OV=scarry(op1, op2); op1 = op1 + op2; Z = op1 == 0; S = op1 s< 0; }
+macro op_addb(op1, op2) { op_add(op1, op2); }
+macro op_cmp(op1, op2) { C=(op1<op2); Z=(op1==op2); S=(op1-op2) s< 0; OV=sborrow(op1, op2); }
+macro op_cmpb(op1, op2) { op_cmp(op1, op2); }
+macro op_sub(op1, op2) { op_cmp(op1, op2); op1 = op1 - op2; }
+macro op_subb(op1, op2) { op_sub(op1, op2); }
+macro op_sll(op, width) { op = op << width; } 
+macro op_sllb(op, width) { op = op << width; } 
+
 macro op_nop() { goto inst_next; }
+macro op_rt() { pop(PC); return [PC]; }
+
+macro op_j(addr) { goto addr; }
+macro op_sj(addr) { goto addr; }
+macro op_jgt(rel8) { if (C == 0 && Z == 0) goto rel8; }
+macro op_jeq(rel8) { if (Z == 1) goto rel8; }
+macro op_jlt(rel8) { if (C == 1) goto rel8; }
+macro op_jns(rel8) { if (S == 1) goto rel8; }
+macro op_jps(rel8) { if (S == 0) goto rel8; }
+macro op_jge(rel8) { if (C == 0) goto rel8; }
+macro op_jne(rel8) { if (Z == 0) goto rel8; }
+macro op_jle(rel8) { if (Z == 1 || C == 1) goto rel8; }
+macro op_jbr(op, bit, rel8) { if ((op & (1<<bit)) == 0) goto rel8; }
+macro op_jbs(op, bit, rel8) { if (op & (1<<bit)) goto rel8; }
+
+macro op_jbrs(op, bit, rel8) {
+  # jumps if bit was 0, but unconditionally set bit to 1 so we can assume it afterward
+  r = (op & (1<<bit)) == 0;
+  op = op|(1<<bit);
+  if (r) goto rel8;
+}
+
+macro op_jbsr(op, bit, rel8) {
+  # jumps if bit was 1, but unconditionally set bit to 1 so we can assume it afterward
+  s = (op & (1<<bit)) == 1;
+  op = op & ~(1<<bit);
+  if (s) goto rel8;
+}
 
 @include "nx8-500s.sinc"
 
