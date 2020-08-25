@@ -2,8 +2,9 @@
 
 <processor_spec>
     <default_memory_blocks>
-        <memory_block name="rom" start_address="rom:0x0000" length="0x10000" mode="r" initialized="true"/>
-        <memory_block name="ram" start_address="ram:0x0000" length="0x1a00" mode="rw"/>
+        <memory_block name="rom" start_address="rom:0x0000" length="0x10000" mode="rx" initialized="true"/>
+        <memory_block name="ram" start_address="ram:0x0000" length="0x200"  mode="rwv"/>
+        <memory_block name="ram" start_address="ram:0x0200" length="0x1800" mode="rw"/>
     </default_memory_blocks>
     
     <default_symbols>

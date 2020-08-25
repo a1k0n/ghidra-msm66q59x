@@ -47,6 +47,8 @@ define token instr(8)
     sbaop = (6, 7)
     n7reg = (7, 7)
     n7 = (0, 6) signed
+    op4 = (4, 7)
+    Vno = (0, 3)
 ;
 
 define token preofftok(8)
@@ -163,11 +165,18 @@ n7pw: n7[DP] is n7reg=0 & n7 & DP { local a = DP + n7; export *[ram]:2 a; }
 n7pw: n7[USP] is n7reg=1 & n7 & USP { local a = USP + n7; export *[ram]:2 a; }
 
 Cadr: n16 is n16 { export *[rom]:1 n16; }
+Tadrb: n16 is n16 { export *[rom]:1 n16; }
+Tadrw: n16 is n16 { export *[rom]:2 n16; }
 
 indw_reg16: [reg16] is reg16 { export *[ram]:2 reg16; }
 indb_reg16: [reg16] is reg16 { export *[ram]:1 reg16; }
 indw_X1indw: [indw_X1indw] is X1indw { export *[ram]:2 X1indw; }
 indb_X1indw: [indb_X1indw] is X1indw { export *[ram]:1 X1indw; }
+
+Vadr: vector_addr is Vno [ vector_addr = 0x004a + 2*Vno; ] {
+  local v = *[rom]:2 vector_addr:2;
+  export v;
+}
 
 macro push(obj) {
   SSP = SSP-2;
@@ -203,6 +212,8 @@ macro op_add(op1, op2) { C=carry(op1, op2); OV=scarry(op1, op2); op1 = op1 + op2
 macro op_addb(op1, op2) { op_add(op1, op2); }
 macro op_cmp(op1, op2) { C=(op1<op2); Z=(op1==op2); S=(op1-op2) s< 0; OV=sborrow(op1, op2); }
 macro op_cmpb(op1, op2) { op_cmp(op1, op2); }
+macro op_cmpc(op1, op2) { op_cmp(op1, op2); }
+macro op_cmpcb(op1, op2) { op_cmp(op1, op2); }
 macro op_sub(op1, op2) { op_cmp(op1, op2); op1 = op1 - op2; }
 macro op_subb(op1, op2) { op_sub(op1, op2); }
 macro op_sll(op, width) { local t = op<<(width-1); C = t s< 0; op = op << width; } 
@@ -219,6 +230,17 @@ macro op_rol(op, width) { op_roln(op, width, 16); }
 macro op_rolb(op, width) { op_roln(op, width, 8); }
 macro op_nop() { }
 macro op_rt() { pop(PC); return [PC]; }
+macro op_rti() { pop(PSW); pop(LRB); pop(ACC); pop(PC); return [PC]; }
+
+macro op_cal(addr) {
+  # push(&:2 inst_next);
+  call addr;
+}
+
+macro op_vcal(addr) {
+  # push(&:2 inst_next);
+  call [addr];
+}
 
 macro op_j(addr) { goto addr; }
 macro op_sj(addr) { goto addr; }
