@@ -8,9 +8,64 @@
     </default_memory_blocks>
     
     <default_symbols>
-        <symbol name="reset_vector" address="rom:0x0000" type="code_ptr" entry="true"/>
-        <symbol name="brk_vector" address="rom:0x0002" type="code_ptr" entry="true"/>
-        <symbol name="wdt_vector" address="rom:0x0004" type="code_ptr" entry="true"/>
-        <!-- TODO: all the other vectors! -->
+        <symbol name="reset_vector"  address="rom:0x0000" type="code_ptr" entry="true"/>
+        <symbol name="brk_vector"    address="rom:0x0002" type="code_ptr" entry="true"/>
+        <symbol name="wdt_vector"    address="rom:0x0004" type="code_ptr" entry="true"/>
+        <symbol name="optrp_vector"  address="rom:0x0006" type="code_ptr" entry="true"/>
+        <symbol name="nmi_vector"    address="rom:0x0008" type="code_ptr" entry="true"/>
+        <symbol name="int0_vector"   address="rom:0x000a" type="code_ptr" entry="true"/>
+        <symbol name="tm0_vector"    address="rom:0x000c" type="code_ptr" entry="true"/>
+        <symbol name="tm1_vector"    address="rom:0x000e" type="code_ptr" entry="true"/>
+        <symbol name="cap0_vector"   address="rom:0x0010" type="code_ptr" entry="true"/>
+        <symbol name="cap1_vector"   address="rom:0x0012" type="code_ptr" entry="true"/>
+        <symbol name="cap2_vector"   address="rom:0x0014" type="code_ptr" entry="true"/>
+        <symbol name="cap3_vector"   address="rom:0x0016" type="code_ptr" entry="true"/>
+        <symbol name="rto4_vector"   address="rom:0x0018" type="code_ptr" entry="true"/>
+        <symbol name="rto5_vector"   address="rom:0x001a" type="code_ptr" entry="true"/>
+        <symbol name="rto6_vector"   address="rom:0x001c" type="code_ptr" entry="true"/>
+        <symbol name="rto7_vector"   address="rom:0x001e" type="code_ptr" entry="true"/>
+        <symbol name="rto8_vector"   address="rom:0x0020" type="code_ptr" entry="true"/>
+        <symbol name="rto9_vector"   address="rom:0x0022" type="code_ptr" entry="true"/>
+        <symbol name="rto10_vector"  address="rom:0x0024" type="code_ptr" entry="true"/>
+        <symbol name="rto11_vector"  address="rom:0x0026" type="code_ptr" entry="true"/>
+        <symbol name="sci1_vector"   address="rom:0x0028" type="code_ptr" entry="true"/>
+        <symbol name="sxtm_vector"   address="rom:0x002a" type="code_ptr" entry="true"/>
+        <symbol name="gtmc_vector"   address="rom:0x002c" type="code_ptr" entry="true"/>
+        <symbol name="adc1_vector"   address="rom:0x002e" type="code_ptr" entry="true"/>
+        <symbol name="adc0_vector"   address="rom:0x0030" type="code_ptr" entry="true"/>
+        <symbol name="pwc0_1_vector" address="rom:0x0032" type="code_ptr" entry="true"/>
+        <symbol name="pwc2_3_vector" address="rom:0x0034" type="code_ptr" entry="true"/>
+        <symbol name="sci0_vector"   address="rom:0x0036" type="code_ptr" entry="true"/>
+        <symbol name="int1_vector"   address="rom:0x0038" type="code_ptr" entry="true"/>
+        <symbol name="rto12_vector"  address="rom:0x003a" type="code_ptr" entry="true"/>
+        <symbol name="rto13_vector"  address="rom:0x003c" type="code_ptr" entry="true"/>
+        <symbol name="pwc4_5_vector" address="rom:0x003e" type="code_ptr" entry="true"/>
+        <symbol name="pwc6_7_vector" address="rom:0x0040" type="code_ptr" entry="true"/>
+        <symbol name="cap14_vector"  address="rom:0x0042" type="code_ptr" entry="true"/>
+        <symbol name="cap15_vector"  address="rom:0x0044" type="code_ptr" entry="true"/>
+        <symbol name="ftm16_vector"  address="rom:0x0046" type="code_ptr" entry="true"/>
+        <symbol name="ftm17_vector"  address="rom:0x0048" type="code_ptr" entry="true"/>
+        <symbol name="vcal0_vector"  address="rom:0x004a" type="code_ptr" entry="true"/>
+        <symbol name="vcal1_vector"  address="rom:0x004c" type="code_ptr" entry="true"/>
+        <symbol name="vcal2_vector"  address="rom:0x004e" type="code_ptr" entry="true"/>
+        <symbol name="vcal3_vector"  address="rom:0x0050" type="code_ptr" entry="true"/>
+        <symbol name="vcal4_vector"  address="rom:0x0052" type="code_ptr" entry="true"/>
+        <symbol name="vcal5_vector"  address="rom:0x0054" type="code_ptr" entry="true"/>
+        <symbol name="vcal6_vector"  address="rom:0x0056" type="code_ptr" entry="true"/>
+        <symbol name="vcal7_vector"  address="rom:0x0058" type="code_ptr" entry="true"/>
+        <symbol name="vcal8_vector"  address="rom:0x005a" type="code_ptr" entry="true"/>
+        <symbol name="vcal9_vector"  address="rom:0x005c" type="code_ptr" entry="true"/>
+        <symbol name="vcal10_vector" address="rom:0x005e" type="code_ptr" entry="true"/>
+        <symbol name="vcal11_vector" address="rom:0x0060" type="code_ptr" entry="true"/>
+        <symbol name="vcal12_vector" address="rom:0x0062" type="code_ptr" entry="true"/>
+        <symbol name="vcal13_vector" address="rom:0x0064" type="code_ptr" entry="true"/>
+        <symbol name="vcal14_vector" address="rom:0x0066" type="code_ptr" entry="true"/>
+        <symbol name="vcal15_vector" address="rom:0x0068" type="code_ptr" entry="true"/>
+        <symbol name="pwc8_9_vector" address="rom:0x006a" type="code_ptr" entry="true"/>
+        <symbol name="pwc10_11_vector" address="rom:0x006c" type="code_ptr" entry="true"/>
+        <symbol name="sci2_vector"   address="rom:0x006e" type="code_ptr" entry="true"/>
+        <symbol name="sci3_vector"   address="rom:0x0070" type="code_ptr" entry="true"/>
+        <symbol name="sci4_vector"   address="rom:0x0072" type="code_ptr" entry="true"/>
+        <symbol name="sci5_vector"   address="rom:0x0074" type="code_ptr" entry="true"/>
     </default_symbols>
 </processor_spec>
