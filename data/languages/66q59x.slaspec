@@ -114,11 +114,11 @@ A16indb: [ACC] is epsilon & ACC { export *[ram]:1 ACC; }
 A16indw: [ACC] is epsilon & ACC { export *[ram]:2 ACC; }
 
 DPindw: [DP] is epsilon & DP { export *[ram]:2 DP; }
-DPindincw: [DP+] is epsilon & DP { local a = *[ram]:2 DP; DP = DP+1; export a; }
-DPinddecw: [DP-] is epsilon & DP { local a = *[ram]:2 DP; DP = DP-1; export a; }
+DPindincw: [DP+] is epsilon & DP { local a = DP; DP = DP+1; export *[ram]:2 a; }
+DPinddecw: [DP-] is epsilon & DP { local a = DP; DP = DP-1; export *[ram]:2 a; }
 DPindb: [DP] is epsilon & DP { export *[ram]:1 DP; }
-DPindincb: [DP+] is epsilon & DP { local a = *[ram]:1 DP; DP = DP+1; export a; }
-DPinddecb: [DP-] is epsilon & DP { local a = *[ram]:1 DP; DP = DP-1; export a; }
+DPindincb: [DP+] is epsilon & DP { local a = DP; DP = DP+1; export *[ram]:1 a; }
+DPinddecb: [DP-] is epsilon & DP { local a = DP; DP = DP-1; export *[ram]:1 a; }
 
 X1indw: [X1] is epsilon & X1 { export *[ram]:2 X1; }
 X1indb: [X1] is epsilon & X1 { export *[ram]:1 X1; }
@@ -138,11 +138,11 @@ X1indb2: [X1] is epsilon & X1 { export *[ram]:1 X1; }
 X1immw2: op1n16[X1] is op1n16 & X1 { local a = X1+op1n16; export *[ram]:2 a; }
 X1immb2: op1n16[X1] is op1n16 & X1 { local a = X1+op1n16; export *[ram]:1 a; }
 DPindw2: [DP] is epsilon & DP { export *[ram]:2 DP; }
-DPindincw2: [DP+] is epsilon & DP { local a = *[ram]:2 DP; DP = DP+1; export a; }
-DPinddecw2: [DP-] is epsilon & DP { local a = *[ram]:2 DP; DP = DP-1; export a; }
+DPindincw2: [DP+] is epsilon & DP { local a = DP; DP = DP+1; export *[ram]:2 a; }
+DPinddecw2: [DP-] is epsilon & DP { local a = DP; DP = DP-1; export *[ram]:2 a; }
 DPindb2: [DP] is epsilon & DP { export *[ram]:1 DP; }
-DPindincb2: [DP+] is epsilon & DP { local a = *[ram]:1 DP; DP = DP+1; export a; }
-DPinddecb2: [DP-] is epsilon & DP { local a = *[ram]:1 DP; DP = DP-1; export a; }
+DPindincb2: [DP+] is epsilon & DP { local a = DP; DP = DP+1; export *[ram]:1 a; }
+DPinddecb2: [DP-] is epsilon & DP { local a = DP; DP = DP-1; export *[ram]:1 a; }
 X1plusAw2: [X1+AL] is epsilon & X1 & AL { local a = X1+zext(AL); export *[ram]:2 a; }
 X1plusAb2: [X1+AL] is epsilon & X1 & AL { local a = X1+zext(AL); export *[ram]:1 a; }
 X1plusR0w2: [X1+R0] is epsilon & X1 & R0 { local a = X1+zext(R0); export *[ram]:2 a; }
@@ -200,44 +200,103 @@ macro op_mov(op1, op2) { op1 = op2; }
 macro op_movb(op1, op2) { op1 = op2; }
 macro op_st(op1, op2) { op2 = op1; }
 macro op_stb(op1, op2) { op2 = op1; }
+macro op_xchg(op1, op2) { local t = op1; op1 = op2; op2 = t; }
+macro op_xchgb(op1, op2) { local t = op1; op1 = op2; op2 = t; }
 macro op_clr(op) { op = 0; Z = 1; }
 macro op_clrb(op) { op = 0; Z = 1; }
 
-macro op_rb(op, bit) { op = op & ~(1<<bit); }
-macro op_sb(op, bit) { op = op | (1<<bit); }
+macro op_rb(op, bit) {
+  local a = op;
+  Z = (a & (1<<bit)) == 0;
+  op = a & ~(1<<bit);
+}
+macro op_rbr(op, bit) { op_rb(op, bit); }
+
+macro op_sb(op, bit) {
+  local a = op;
+  Z = (a & (1<<bit)) != 0;
+  op = a | (1<<bit);
+}
+macro op_sbr(op, bit) { op_sb(op, bit); }
+
 macro op_lmb(c, op, bit) { C = ((op>>bit)&1) == 1; }
 macro op_smb(op, bit, c) { op = (op & ~(1<<bit)) | (zext(c)<<bit); }
-macro op_inc(op) { op = op + 1; Z = op == 0; OV = op == 0; S = op s< 0; }
-macro op_incb(op) { op = op + 1; Z = op == 0; OV = op == 0; S = op s< 0; }
-macro op_dec(op) { OV = op == 0; op = op - 1; Z = op == 0; S = op s< 0; }
-macro op_decb(op) { OV = op == 0; op = op - 1; Z = op == 0; S = op s< 0; }
-macro op_add(op1, op2) { C=carry(op1, op2); OV=scarry(op1, op2); op1 = op1 + op2; Z = op1 == 0; S = op1 s< 0; }
+macro op_inc(op) { local a = op + 1; Z = a == 0; OV = a == 0; S = a s< 0; op = a; }
+macro op_incb(op) { local a = op + 1; Z = a == 0; OV = a == 0; S = a s< 0; op = a; }
+macro op_dec(op) { local a = op; OV = a == 0; local b = a - 1; Z = b == 0; S = b s< 0; op = b; }
+macro op_decb(op) { local a = op; OV = a == 0; local b = a - 1; Z = b == 0; S = b s< 0; op = b; }
+macro op_add(op1, op2) {
+  local a = op1;
+  local b = op2;
+  C=carry(a, b);
+  OV=scarry(a, b);
+  local c = a + b;
+  Z = c == 0;
+  S = c s< 0;
+  op1 = c;
+}
+
+macro op_adc(op1, op2) {
+  local Ccopy = zext(C);
+  local a = op1;
+  local b = op2;
+  C = carry(a, b);
+  OV = scarry(a, b);
+  local sum = a + b;
+  C = C || carry(sum, Ccopy);
+  OV = OV ^^ scarry(sum, Ccopy);
+  Z = sum == 0;
+  S = sum s< 0;
+  op1 = sum + Ccopy;
+}
+
+macro op_adcb(op1, op2) { op_adc(op1, op2); }
 macro op_addb(op1, op2) { op_add(op1, op2); }
-macro op_cmp(op1, op2) { C=(op1<op2); Z=(op1==op2); S=(op1-op2) s< 0; OV=sborrow(op1, op2); }
+macro op_cmp(op1, op2) { local a = op1; local b = op2; C=(a<b); Z=(a==b); S=(a-b) s< 0; OV=sborrow(a, b); }
 macro op_cmpb(op1, op2) { op_cmp(op1, op2); }
 macro op_cmpc(op1, op2) { op_cmp(op1, op2); }
 macro op_cmpcb(op1, op2) { op_cmp(op1, op2); }
-macro op_sub(op1, op2) { op_cmp(op1, op2); op1 = op1 - op2; }
+macro op_sub(op1, op2) { local a = op1; local b = op2; op_cmp(a, b); op1 = a - b; }
 macro op_subb(op1, op2) { op_sub(op1, op2); }
 macro op_sll(op, width) { local t = op<<(width-1); C = t s< 0; op = op << width; } 
 macro op_sllb(op, width) { local t = op<<(width-1); C = t s< 0; op = op << width; }
+macro op_srl(op, width) { local t = op>>(width-1); local newC = t & 1; C = newC:1; op = op >> width; } 
+macro op_srlb(op, width) { local t = op>>(width-1); local newC = t & 1; C = newC:1; op = op >> width; }
+macro op_sc() { C = 1; }
+macro op_rc() { C = 0; }
+macro op_swap() { local al = AL; AL = AH; AH = al; }
+macro op_and(op1, op2) { local a = op1 & op2; Z = a == 0; S = a s< 0; op1 = a; }
+macro op_andb(op1, op2) { local a = op1 & op2; Z = a == 0; S = a s< 0; op1 = a; }
+macro op_or(op1, op2) { local a = op1 | op2; Z = a == 0; S = a s< 0; op1 = a; }
+macro op_orb(op1, op2) { local a = op1 | op2; Z = a == 0; S = a s< 0; op1 = a; }
+macro op_xor(op1, op2) { local a = op1 ^ op2; Z = a == 0; S = a s< 0; op1 = a; }
+macro op_xorb(op1, op2) { local a = op1 ^ op2; Z = a == 0; S = a s< 0; op1 = a; }
 
-macro op_and(op1, op2) { op1 = op1 & op2; Z = op1 == 0; S = op1 s< 0; }
-macro op_andb(op1, op2) { op1 = op1 & op2; Z = op1 == 0; S = op1 s< 0; }
-macro op_or(op1, op2) { op1 = op1 | op2; Z = op1 == 0; S = op1 s< 0; }
-macro op_orb(op1, op2) { op1 = op1 | op2; Z = op1 == 0; S = op1 s< 0; }
-macro op_xor(op1, op2) { op1 = op1 ^ op2; Z = op1 == 0; S = op1 s< 0; }
-macro op_xorb(op1, op2) { op1 = op1 ^ op2; Z = op1 == 0; S = op1 s< 0; }
+macro op_neg(op) { op = -op; }  # flags unimplemented
+macro op_negb(op) { op = -op; }  # flags unimplemented
 
 macro op_roln(op, width, n) {
-  local t = op<<(width-1);
+  local a = op;
+  local t = a<<(width-1);
   newC = t s< 0;
-  op = (op<<width) | (zext(C)<<(width-1)) | (op >> (n-width+1));
+  op = (a<<width) | (zext(C)<<(width-1)) | (a >> (n-width+1));
   C = newC;
 }
 
 macro op_rol(op, width) { op_roln(op, width, 16); }
 macro op_rolb(op, width) { op_roln(op, width, 8); }
+
+macro op_rorn(op, width, n) {
+  local a = op;
+  local t = a>>(width-1);
+  newC = t & 1;
+  op = (a>>width) | (zext(C)<<(n-width)) | (a << (n-width+1));
+  C = newC:1;
+}
+
+macro op_ror(op, width) { op_rorn(op, width, 16); }
+macro op_rorb(op, width) { op_rorn(op, width, 8); }
+
 macro op_nop() { }
 macro op_rt() { pop(PC); return [PC]; }
 macro op_rti() { pop(PSW); pop(LRB); pop(ACC); pop(PC); return [PC]; }
@@ -262,23 +321,82 @@ macro op_jps(rel8) { if (S == 0) goto rel8; }
 macro op_jge(rel8) { if (C == 0) goto rel8; }
 macro op_jne(rel8) { if (Z == 0) goto rel8; }
 macro op_jle(rel8) { if (Z == 1 || C == 1) goto rel8; }
-macro op_djnz(op, addr) { op = op-1; if(op == 0) goto addr; }
+macro op_jgts(rel8) { if ((OV || S || Z) == 0) goto rel8; }
+macro op_jges(rel8) { if ((OV || S) == 0) goto rel8; }
+macro op_jlts(rel8) { if ((OV || S) == 1) goto rel8; }
+macro op_jles(rel8) { if ((OV || S || Z) == 1) goto rel8; }
+
+macro op_djnz(op, addr) { op = op-1; if(op != 0) goto addr; }
+macro op_tjnz(op, addr) { if (op != 0) goto addr; }
+macro op_tjnzb(op, addr) { if (op != 0) goto addr; }
+macro op_tjz(op, addr) { if (op == 0) goto addr; }
+macro op_tjzb(op, addr) { if (op == 0) goto addr; }
 macro op_jbr(op, bit, rel8) { if ((op & (1<<bit)) == 0) goto rel8; }
 macro op_jbs(op, bit, rel8) { if (op & (1<<bit)) goto rel8; }
+macro op_tbr(op, bit) { Z = (op & (1<<bit)) == 0; }
 
 macro op_jbrs(op, bit, rel8) {
   # jumps if bit was 0, but unconditionally set bit to 1 so we can assume it afterward
-  r = (op & (1<<bit)) == 0;
-  op = op|(1<<bit);
+  local a = op;
+  r = (a & (1<<bit)) == 0;
+  op = a | (1<<bit);
   if (r) goto rel8;
 }
 
 macro op_jbsr(op, bit, rel8) {
   # jumps if bit was 1, but unconditionally set bit to 1 so we can assume it afterward
-  s = (op & (1<<bit)) == 1;
-  op = op & ~(1<<bit);
+  local a = op;
+  s = (a & (1<<bit)) == 1;
+  op = a & ~(1<<bit);
   if (s) goto rel8;
 }
+
+macro op_cpl(c) { c = ~c; }
+
+macro op_ei() {}  # enable interrupts
+macro op_di() {}  # disable
+
+macro op_sdd() {}  # set/reset dd implemented in context
+macro op_rdd() {}
+
+macro op_fill(op) { op = 0xffff:2; }
+macro op_fillb(op) { op = 0xff:1; }
+macro op_extnd() { ACC = sext(AL); S = ACC s< 0; }
+
+# TODO: bitwise logic ops
+macro op_band(src, dst, bit) {}
+macro op_bandn(src, dst, bit) {}
+macro op_bor(src, dst, bit) {}
+macro op_born(src, dst, bit) {}
+macro op_bxor(src, dst, bit) {}
+
+# TODO: indirect bitwise bit load/store
+macro op_mbr(c, op, bit) {}
+
+# TODO: multiplication
+macro op_mul(op) {}
+macro op_mulb(op) {}
+macro op_sqr(op) {}
+macro op_sqrb(op) {}
+
+# TODO: subtract w/ borrow
+macro op_sbc(op1, op2) {}
+macro op_sbcb(op1, op2) {}
+
+# TODO stack
+macro op_pushs(op) {}
+
+# TODO: divison
+macro op_div(op) {}
+macro op_divb(op) {}
+macro op_divq(op) {}
+
+# TODO: sra
+macro op_sra(op, width) {}
+macro op_srab(op, width) {}
+
+# TODO: tbr
+
 
 @include "nx8-500s.sinc"
 
